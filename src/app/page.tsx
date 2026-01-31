@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -372,6 +372,90 @@ export default function LessonArchive() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="animate-spin text-blue-600" size={32} />
+      </div>
+    );
+  }
+
+  // ------------------------------------------
+  // MARKETING PAGE (If not logged in & not viewing shared)
+  // ------------------------------------------
+  if (!user && !publicUserId) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 selection:bg-blue-100">
+        {/* Navbar */}
+        <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-slate-900">
+                <div className="p-2 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/30">
+                    <Layers size={24} />
+                </div>
+                Lesson Hub
+            </div>
+            <button 
+                onClick={handleLogin}
+                className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all text-sm shadow-lg hover:shadow-xl"
+            >
+                Sign In
+            </button>
+        </nav>
+
+        {/* Hero */}
+        <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wider mb-8 border border-blue-100 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <Sparkles size={14} />
+                For Modern Teachers
+            </div>
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 leading-[1.1] animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                Organize your teaching <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">in one place.</span>
+            </h1>
+            <p className="text-lg md:text-xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+                Say goodbye to messy paper planners. Manage your schedules, lesson plans, and resources effortlessly with Lesson Hub.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+                <button 
+                    onClick={handleLogin}
+                    className="px-8 py-4 rounded-full bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 flex items-center justify-center gap-2 group"
+                >
+                    Get Started for Free 
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button 
+                    onClick={() => window.open('https://github.com', '_blank')}
+                    className="px-8 py-4 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-all hover:border-slate-300"
+                >
+                    Learn More
+                </button>
+            </div>
+
+            {/* Feature Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 text-left w-full animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
+                <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all group">
+                    <div className="w-14 h-14 bg-white text-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                        <Clock size={28} />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3 text-slate-900">Smart Scheduling</h3>
+                    <p className="text-slate-500 leading-relaxed">Visualize your daily classes with an intuitive calendar view designed specifically for academic schedules.</p>
+                </div>
+                <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all group">
+                    <div className="w-14 h-14 bg-white text-violet-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                        <BookOpen size={28} />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3 text-slate-900">Lesson Planning</h3>
+                    <p className="text-slate-500 leading-relaxed">Attach notes, resources, and links directly to your class slots. Keep everything organized and accessible.</p>
+                </div>
+                <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all group">
+                    <div className="w-14 h-14 bg-white text-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                        <Share2 size={28} />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3 text-slate-900">Easy Sharing</h3>
+                    <p className="text-slate-500 leading-relaxed">Share your schedule or specific lesson resources with students or colleagues via a simple, secure link.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer className="py-8 text-center text-slate-400 text-sm border-t border-slate-100 bg-slate-50">
+            <p>© {new Date().getFullYear()} Lesson Hub. Built for teachers.</p>
+        </footer>
       </div>
     );
   }
