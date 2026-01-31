@@ -440,7 +440,7 @@ export default function LessonArchive() {
               </div>
             );
 
-            const data = entries[slot.id] || {};
+            const data = entries[slot.id] || ({} as Partial<LessonEntry>);
             const isOpen = expanded === slot.id;
 
             return (
