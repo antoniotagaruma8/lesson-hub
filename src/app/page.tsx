@@ -216,7 +216,7 @@ export default function LessonArchive() {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('lesson_plan')
+          .from('link')
           .select('*')
           .eq('date', dateKey)
           .eq('user_id', targetUserId);
