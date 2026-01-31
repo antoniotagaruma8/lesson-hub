@@ -24,7 +24,7 @@ export async function parseScheduleAction(formData: FormData) {
     const base64 = buffer.toString("base64");
 
     const prompt = `
-      You are a schedule parser. Analyze the attached image of a class schedule.
+      You are a schedule parser. Analyze the attached image or PDF of a class schedule.
       Extract the weekly schedule and format it into a JSON object where keys are numbers 1-5 (Monday-Friday).
       
       The output must be strictly this JSON structure:
