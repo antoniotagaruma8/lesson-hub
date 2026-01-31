@@ -206,6 +206,62 @@ export default function LessonArchive() {
     if (!isOwner) setIsAdmin(false);
   }, [isOwner]);
 
+  // Load Schedules from DB
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchSchedules = async () => {
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (data && data.length > 0) {
+        const loadedProfiles = data.map((d: any) => ({
+          id: d.profile_id,
+          name: d.name,
+          subtitle: d.subtitle,
+          schedule: d.schedule
+        }));
+        setProfiles(loadedProfiles);
+        // If current profile is not in loaded, switch to first
+        if (!loadedProfiles.find((p: any) => p.id === currentProfileId)) {
+          setCurrentProfileId(loadedProfiles[0].id);
+        }
+      }
+    };
+
+    fetchSchedules();
+  }, [user]);
+
+  // Helper to save a specific profile to DB
+  const saveProfileToDB = async (profile: ScheduleProfile) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('schedules').upsert({
+        user_id: user.id,
+        profile_id: profile.id,
+        name: profile.name,
+        subtitle: profile.subtitle,
+        schedule: profile.schedule
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error saving schedule:", err);
+    }
+  };
+
+  // Helper to delete a profile from DB
+  const deleteProfileFromDB = async (profileId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('schedules').delete().eq('user_id', user.id).eq('profile_id', profileId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error deleting schedule:", err);
+    }
+  };
+
   // Load Data
   useEffect(() => {
     if (!targetUserId) {
@@ -346,42 +402,62 @@ export default function LessonArchive() {
   const handleSaveSlot = () => {
     if (!editingSlot) return;
     
-    setProfiles(prev => prev.map(p => {
-      if (p.id !== currentProfileId) return p;
-      
-      const newSchedule = { ...p.schedule };
-      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
-      
-      if (editingSlot.slotIndex === -1) {
-        // Add new
-        daySlots.push(editingSlot.slot);
-      } else {
-        // Update existing
-        daySlots[editingSlot.slotIndex] = editingSlot.slot;
-      }
-      
-      // Sort by time
-      daySlots.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    let updatedProfile: ScheduleProfile | null = null;
 
-      newSchedule[editingSlot.dayIndex] = daySlots;
-      return { ...p, schedule: newSchedule };
-    }));
+    setProfiles(prev => {
+      const newProfiles = prev.map(p => {
+        if (p.id !== currentProfileId) return p;
+        
+        const newSchedule = { ...p.schedule };
+        const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+        
+        if (editingSlot.slotIndex === -1) {
+          // Add new
+          daySlots.push(editingSlot.slot);
+        } else {
+          // Update existing
+          daySlots[editingSlot.slotIndex] = editingSlot.slot;
+        }
+        
+        // Sort by time
+        daySlots.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+        newSchedule[editingSlot.dayIndex] = daySlots;
+        updatedProfile = { ...p, schedule: newSchedule };
+        return updatedProfile;
+      });
+      return newProfiles;
+    });
+
+    if (updatedProfile) {
+      saveProfileToDB(updatedProfile);
+    }
     setEditingSlot(null);
   };
 
   const handleDeleteSlot = () => {
     if (!editingSlot || editingSlot.slotIndex === -1) return;
 
-    setProfiles(prev => prev.map(p => {
-      if (p.id !== currentProfileId) return p;
-      
-      const newSchedule = { ...p.schedule };
-      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
-      daySlots.splice(editingSlot.slotIndex, 1);
-      
-      newSchedule[editingSlot.dayIndex] = daySlots;
-      return { ...p, schedule: newSchedule };
-    }));
+    let updatedProfile: ScheduleProfile | null = null;
+
+    setProfiles(prev => {
+      const newProfiles = prev.map(p => {
+        if (p.id !== currentProfileId) return p;
+        
+        const newSchedule = { ...p.schedule };
+        const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+        daySlots.splice(editingSlot.slotIndex, 1);
+        
+        newSchedule[editingSlot.dayIndex] = daySlots;
+        updatedProfile = { ...p, schedule: newSchedule };
+        return updatedProfile;
+      });
+      return newProfiles;
+    });
+
+    if (updatedProfile) {
+      saveProfileToDB(updatedProfile);
+    }
     setEditingSlot(null);
   };
 
@@ -999,6 +1075,7 @@ export default function LessonArchive() {
                         schedule: {}
                     };
                     setProfiles(prev => [...prev, newProfile]);
+                    saveProfileToDB(newProfile); // Save new manual
                     setCurrentProfileId(newProfile.id);
                     setIsAddScheduleModalOpen(false);
                     setNewScheduleTitle("");
@@ -1052,6 +1129,7 @@ export default function LessonArchive() {
                     onClick={() => {
                         if(confirm("Are you sure you want to delete this schedule?")) {
                             const newProfiles = profiles.filter(p => p.id !== currentProfileId);
+                            deleteProfileFromDB(currentProfileId); // Delete from DB
                             setProfiles(newProfiles);
                             setCurrentProfileId(newProfiles[0].id);
                             setIsEditScheduleModalOpen(false);
@@ -1065,7 +1143,15 @@ export default function LessonArchive() {
                 <button 
                   className="flex-[2] py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
                   onClick={() => {
-                      setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, name: newScheduleTitle, subtitle: newScheduleSubtitle } : p));
+                      let updatedProfile: ScheduleProfile | null = null;
+                      setProfiles(prev => prev.map(p => {
+                        if (p.id === currentProfileId) {
+                          updatedProfile = { ...p, name: newScheduleTitle, subtitle: newScheduleSubtitle };
+                          return updatedProfile;
+                        }
+                        return p;
+                      }));
+                      if (updatedProfile) saveProfileToDB(updatedProfile); // Save info update
                       setIsEditScheduleModalOpen(false);
                   }}
                 >
