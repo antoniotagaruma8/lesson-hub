@@ -17,7 +17,7 @@ export async function parseScheduleAction(formData: FormData) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -88,7 +88,7 @@ export async function generateLinkTitleAction(url: string) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Analyze this URL: "${url}"
