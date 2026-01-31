@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
-import { parseScheduleAction, generateLinkTitleAction } from "./actions";
 import { parseScheduleAction, generateLinkTitleAction, shortenUrlAction } from "./actions";
 
 // ==========================================
@@ -366,10 +365,6 @@ export default function LessonArchive() {
           {/* Share Button */}
           {targetUserId && (
             <button 
-              onClick={() => {
-                const url = `${window.location.origin}?uid=${targetUserId}`;
-                navigator.clipboard.writeText(url);
-                alert("Public link copied to clipboard!");
               onClick={async () => {
                 if (isSharing) return;
                 setIsSharing(true);
@@ -381,11 +376,9 @@ export default function LessonArchive() {
                 alert(`Link copied: ${urlToCopy}`);
                 setIsSharing(false);
               }}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
               className={`p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors ${isSharing ? 'opacity-50 cursor-wait' : ''}`}
               title="Share Schedule"
             >
-              <Share2 size={20} />
               {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
             </button>
           )}
