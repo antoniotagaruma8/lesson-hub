@@ -199,7 +199,6 @@ export default function LessonArchive() {
 
   // Load Data
   useEffect(() => {
-    if (!user) return; // Don't load if not logged in
     async function loadData() {
       setLoading(true);
       try {
@@ -296,34 +295,6 @@ export default function LessonArchive() {
   };
 
   // ------------------------------------------
-  // LANDING PAGE (If not logged in)
-  // ------------------------------------------
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 max-w-md w-full">
-          <div className="flex justify-center mb-6">
-            <div className="p-4 bg-blue-50 rounded-2xl text-blue-600">
-              <BookOpen size={48} />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">myLesson Hub</h1>
-          <p className="text-slate-500 mb-8">Your personal lesson planning assistant. Organize schedules, links, and notes in one place.</p>
-          
-          <button 
-            onClick={handleLogin}
-            className="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-blue-200"
-          >
-            <LogIn size={20} />
-            Sign in with Google
-          </button>
-          <p className="mt-6 text-xs text-slate-400">IES Simone Veil • UAH</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ------------------------------------------
   // MAIN APP (If logged in)
   // ------------------------------------------
   return (
@@ -372,16 +343,28 @@ export default function LessonArchive() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsAdmin(!isAdmin)}
-            className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-medium ${isAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            {isAdmin ? <Unlock size={14} /> : <Lock size={14} />} 
-            {isAdmin ? 'ADMIN MODE' : 'VIEW ONLY'}
-          </button>
-          <button onClick={handleLogout} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors" title="Sign Out">
-            <LogOut size={16} />
-          </button>
+          {user ? (
+            <>
+              <button 
+                onClick={() => setIsAdmin(!isAdmin)}
+                className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-medium ${isAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                {isAdmin ? <Unlock size={14} /> : <Lock size={14} />} 
+                {isAdmin ? 'ADMIN MODE' : 'VIEW ONLY'}
+              </button>
+              <button onClick={handleLogout} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors" title="Sign Out">
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="text-xs px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <LogIn size={14} />
+              Sign In
+            </button>
+          )}
         </div>
       </nav>
 
