@@ -199,7 +199,10 @@ export default function LessonArchive() {
 
   // Load Data
   useEffect(() => {
-    if (!user) return; // Don't load if not logged in
+    if (!user) {
+      setEntries({}); // Clear data when logged out
+      return;
+    }
     async function loadData() {
       setLoading(true);
       try {
@@ -349,16 +352,28 @@ export default function LessonArchive() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsAdmin(!isAdmin)}
-            className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-medium ${isAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            {isAdmin ? <Unlock size={14} /> : <Lock size={14} />} 
-            {isAdmin ? 'ADMIN MODE' : 'VIEW ONLY'}
-          </button>
-          <button onClick={handleLogout} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors" title="Sign Out">
-            <LogOut size={16} />
-          </button>
+          {user ? (
+            <>
+              <button 
+                onClick={() => setIsAdmin(!isAdmin)}
+                className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-medium ${isAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                {isAdmin ? <Unlock size={14} /> : <Lock size={14} />} 
+                {isAdmin ? 'ADMIN MODE' : 'VIEW ONLY'}
+              </button>
+              <button onClick={handleLogout} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors" title="Sign Out">
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="text-xs px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <LogIn size={14} />
+              Sign In
+            </button>
+          )}
         </div>
       </nav>
 
