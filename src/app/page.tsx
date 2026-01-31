@@ -166,23 +166,30 @@ export default function LessonArchive() {
 
   // Init: Check URL params & Auth Session
   useEffect(() => {
-    // 1. Check for shared link UID
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const uid = params.get('uid');
-      if (uid) setPublicUserId(uid);
-    }
+    const init = async () => {
+      try {
+        // 1. Check for shared link UID
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const uid = params.get('uid');
+          if (uid) setPublicUserId(uid);
+        }
 
-    // 2. Check Auth
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsAuthChecking(false);
-    });
+        // 2. Check Auth
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error("Auth init error:", error);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) setIsAdmin(false);
-      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -364,6 +371,9 @@ export default function LessonArchive() {
     }));
     setEditingSlot(null);
   };
+
+  // Debugging
+  console.log("Auth Status:", { isAuthChecking, hasUser: !!user, publicUserId });
 
   // ------------------------------------------
   // LOADING STATE
