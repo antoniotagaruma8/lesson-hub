@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, 
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -136,6 +136,7 @@ export default function LessonArchive() {
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(SCHEDULE_PROFILES);
   const [isImporting, setIsImporting] = useState(false);
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
+  const [publicUserId, setPublicUserId] = useState<string | null>(null);
 
   // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
   if (SUPABASE_URL.includes("placeholder")) {
@@ -167,6 +168,19 @@ export default function LessonArchive() {
   const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0];
   const schedule = currentProfile.schedule[dayIndex] || [];
   const holidayName = HOLIDAYS[dateKey];
+
+  // Determine target user (URL param takes precedence for viewing, fallback to logged-in user)
+  const targetUserId = publicUserId || user?.id;
+  const isOwner = user && targetUserId === user.id;
+
+  // Parse URL params on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const uid = params.get('uid');
+      if (uid) setPublicUserId(uid);
+    }
+  }, []);
 
   // Auth Listener
   useEffect(() => {
@@ -201,9 +215,14 @@ export default function LessonArchive() {
     window.location.reload();
   };
 
+  // Disable admin mode if viewing someone else's schedule
+  useEffect(() => {
+    if (!isOwner) setIsAdmin(false);
+  }, [isOwner]);
+
   // Load Data
   useEffect(() => {
-    if (!user) {
+    if (!targetUserId) {
       setEntries({}); // Clear data when logged out
       return;
     }
@@ -214,7 +233,7 @@ export default function LessonArchive() {
           .from('lesson_plan')
           .select('*')
           .eq('date', dateKey)
-          .eq('user_id', user.id);
+          .eq('user_id', targetUserId);
 
         if (error) throw error;
         if (data) {
@@ -232,11 +251,11 @@ export default function LessonArchive() {
       setLoading(false);
     }
     loadData();
-  }, [dateKey, user]);
+  }, [dateKey, targetUserId]);
 
   // Save Data
   const saveData = async (slotId: string, updates: any) => {
-    if (!user) return;
+    if (!user || !isOwner) return;
     try {
       setEntries(prev => ({ ...prev, [slotId]: { ...prev[slotId], ...updates } }));
       const { error } = await supabase.from('lesson_plan').upsert({
@@ -254,7 +273,7 @@ export default function LessonArchive() {
 
   // Upload Image
   const handleUpload = async (slotId: string, file: File) => {
-    if(!file || !user) return;
+    if(!file || !user || !isOwner) return;
     const fileName = `${Date.now()}-${file.name}`;
     const { data } = await supabase.storage.from('lesson-gallery').upload(fileName, file);
     if(data) {
@@ -356,15 +375,32 @@ export default function LessonArchive() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Share Button */}
+          {targetUserId && (
+            <button 
+              onClick={() => {
+                const url = `${window.location.origin}?uid=${targetUserId}`;
+                navigator.clipboard.writeText(url);
+                alert("Public link copied to clipboard!");
+              }}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+              title="Share Schedule"
+            >
+              <Share2 size={20} />
+            </button>
+          )}
+
           {user ? (
             <>
-              <button 
+              {isOwner && (
+                <button 
                 onClick={() => setIsAdmin(!isAdmin)}
                 className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-medium ${isAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
                 {isAdmin ? <Unlock size={14} /> : <Lock size={14} />} 
                 {isAdmin ? 'ADMIN MODE' : 'VIEW ONLY'}
-              </button>
+                </button>
+              )}
               <button onClick={handleLogout} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors" title="Sign Out">
                 <LogOut size={16} />
               </button>
