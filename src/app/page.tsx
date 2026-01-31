@@ -183,9 +183,13 @@ export default function LessonArchive() {
   }, []);
 
   const handleLogin = async () => {
+    // Ensure this URL is allowed in Supabase Dashboard > Authentication > URL Configuration
+    // If not allowed, Supabase will fallback to the default Site URL (usually localhost)
+    const redirectTo = window.location.origin;
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo }
     });
   };
 
