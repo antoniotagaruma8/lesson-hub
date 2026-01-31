@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -126,6 +126,7 @@ export default function LessonArchive() {
   const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState("");
   const [newScheduleSubtitle, setNewScheduleSubtitle] = useState("");
+  const [editingSlot, setEditingSlot] = useState<{ dayIndex: number, slotIndex: number, slot: ScheduleSlot } | null>(null);
 
   // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
   if (SUPABASE_URL.includes("placeholder")) {
@@ -319,6 +320,49 @@ export default function LessonArchive() {
     e.target.value = ""; // Reset input
   };
 
+  // Handle Slot Editing
+  const handleSaveSlot = () => {
+    if (!editingSlot) return;
+    
+    setProfiles(prev => prev.map(p => {
+      if (p.id !== currentProfileId) return p;
+      
+      const newSchedule = { ...p.schedule };
+      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+      
+      if (editingSlot.slotIndex === -1) {
+        // Add new
+        daySlots.push(editingSlot.slot);
+      } else {
+        // Update existing
+        daySlots[editingSlot.slotIndex] = editingSlot.slot;
+      }
+      
+      // Sort by time
+      daySlots.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+      newSchedule[editingSlot.dayIndex] = daySlots;
+      return { ...p, schedule: newSchedule };
+    }));
+    setEditingSlot(null);
+  };
+
+  const handleDeleteSlot = () => {
+    if (!editingSlot || editingSlot.slotIndex === -1) return;
+
+    setProfiles(prev => prev.map(p => {
+      if (p.id !== currentProfileId) return p;
+      
+      const newSchedule = { ...p.schedule };
+      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+      daySlots.splice(editingSlot.slotIndex, 1);
+      
+      newSchedule[editingSlot.dayIndex] = daySlots;
+      return { ...p, schedule: newSchedule };
+    }));
+    setEditingSlot(null);
+  };
+
   // ------------------------------------------
   // MAIN APP (If logged in)
   // ------------------------------------------
@@ -499,8 +543,20 @@ export default function LessonArchive() {
           {/* Empty State */}
           {schedule.length === 0 && !holidayName && (
              <div className="p-8 text-center bg-white border border-dashed border-slate-200 rounded-xl text-slate-400">
-               <Coffee className="mx-auto mb-2 opacity-50" />
-               <p>No classes found. Import a schedule to get started.</p>
+               {isAdmin ? (
+                 <button 
+                   onClick={() => setEditingSlot({ dayIndex, slotIndex: -1, slot: { id: `slot_${Date.now()}`, time: '', subject: 'New Class', room: '', color: 'bg-blue-600' } })}
+                   className="flex flex-col items-center gap-2 w-full h-full hover:text-blue-600 transition-colors"
+                 >
+                   <Plus size={32} className="opacity-50" />
+                   <p>Add your first class for today</p>
+                 </button>
+               ) : (
+                 <>
+                   <Coffee className="mx-auto mb-2 opacity-50" />
+                   <p>No classes found. Import a schedule to get started.</p>
+                 </>
+               )}
              </div>
           )}
 
@@ -508,10 +564,18 @@ export default function LessonArchive() {
           {schedule.map((slot: ScheduleSlot, idx: number) => {
             // Render Break
             if(slot.isBreak) return (
-              <div key={idx} className="flex items-center gap-4 py-2 opacity-40">
+              <div key={idx} className="flex items-center gap-4 py-2 opacity-40 group relative">
                  <div className="h-px bg-slate-300 flex-1"></div>
                  <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Recreo</span>
                  <div className="h-px bg-slate-300 flex-1"></div>
+                 {isAdmin && (
+                    <button 
+                      onClick={() => setEditingSlot({ dayIndex, slotIndex: idx, slot })}
+                      className="absolute right-0 p-1 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                 )}
               </div>
             );
 
@@ -539,6 +603,18 @@ export default function LessonArchive() {
                     {/* Icons */}
                     {data.link && <ExternalLink size={16} className="text-blue-600" />}
                     {isAdmin && data.notes && <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>}
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingSlot({ dayIndex, slotIndex: idx, slot });
+                        }}
+                        className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+                        title="Edit Class Details"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
                     {isOpen ? <ChevronUp size={18} className="text-slate-400"/> : <ChevronDown size={18} className="text-slate-400"/>}
                   </div>
                 </div>
@@ -685,6 +761,18 @@ export default function LessonArchive() {
               </div>
             );
           })}
+
+          {/* Add Class Button (Admin Only) */}
+          {isAdmin && schedule.length > 0 && (
+            <button
+              onClick={() => setEditingSlot({ dayIndex, slotIndex: -1, slot: { id: `slot_${Date.now()}`, time: '', subject: '', room: '', color: 'bg-blue-600' } })}
+              className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-xs hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={16} />
+              ADD CLASS
+            </button>
+          )}
+
         </div>
             </div>
           </div>
@@ -852,6 +940,99 @@ export default function LessonArchive() {
                 >
                   <Save size={16} />
                   Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Slot Modal */}
+      {editingSlot && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">{editingSlot.slotIndex === -1 ? 'Add Class' : 'Edit Class'}</h3>
+              <button onClick={() => setEditingSlot(null)} className="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Time</label>
+                <input 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. 08:00-09:00"
+                  value={editingSlot.slot.time || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, time: e.target.value } })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject</label>
+                <input 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. Mathematics"
+                  value={editingSlot.slot.subject || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, subject: e.target.value } })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Room / Teacher</label>
+                <input 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. Room 101 (Mr. Smith)"
+                  value={editingSlot.slot.room || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, room: e.target.value } })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Color Class (Tailwind)</label>
+                <input 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. bg-blue-600"
+                  value={editingSlot.slot.color || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, color: e.target.value } })}
+                />
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {['bg-blue-600', 'bg-green-600', 'bg-red-600', 'bg-yellow-500 text-black', 'bg-purple-600', 'bg-slate-600', 'bg-teal-600', 'bg-indigo-600'].map(c => (
+                    <button 
+                      key={c}
+                      className={`w-6 h-6 rounded-full ${c} border border-black/10 ring-offset-1 hover:ring-2 ring-blue-400 transition-all`}
+                      onClick={() => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, color: c } })}
+                      title={c}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                 <input 
+                    type="checkbox" 
+                    id="isBreak"
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    checked={editingSlot.slot.isBreak || false}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, slot: { ...editingSlot.slot, isBreak: e.target.checked } })}
+                 />
+                 <label htmlFor="isBreak" className="text-sm font-medium text-slate-700 cursor-pointer">Mark as Break / Recess</label>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                {editingSlot.slotIndex !== -1 && (
+                  <button 
+                    className="flex-1 py-3 rounded-xl border border-red-100 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                    onClick={handleDeleteSlot}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                )}
+                <button 
+                  className="flex-[2] py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
+                  onClick={handleSaveSlot}
+                >
+                  <Save size={16} />
+                  Save
                 </button>
               </div>
             </div>
