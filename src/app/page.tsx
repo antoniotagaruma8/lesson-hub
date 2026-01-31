@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
-  ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, 
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2
+  ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -123,6 +123,9 @@ export default function LessonArchive() {
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false);
+  const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
+  const [newScheduleTitle, setNewScheduleTitle] = useState("");
+  const [newScheduleSubtitle, setNewScheduleSubtitle] = useState("");
 
   // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
   if (SUPABASE_URL.includes("placeholder")) {
@@ -298,13 +301,16 @@ export default function LessonArchive() {
       const newProfile: ScheduleProfile = {
         id: `imported_${Date.now()}`,
         name: 'Imported Schedule',
-        subtitle: 'AI Generated',
+        name: newScheduleTitle || 'Imported Schedule',
+        subtitle: newScheduleSubtitle || 'AI Generated',
         schedule: result.data
       };
       
       setProfiles(prev => [...prev, newProfile]);
       setCurrentProfileId(newProfile.id);
       setIsAddScheduleModalOpen(false);
+      setNewScheduleTitle("");
+      setNewScheduleSubtitle("");
       alert("Schedule imported successfully!");
     } else {
       alert(result.message || "Failed to import schedule.");
@@ -347,10 +353,25 @@ export default function LessonArchive() {
                 </button>
               ))}
               
-              {/* Add Schedule Button */}
-              <div className="border-t border-slate-100 p-2">
+              {/* Actions */}
+              <div className="border-t border-slate-100 p-2 space-y-1">
                 <button 
-                  onClick={() => setIsAddScheduleModalOpen(true)}
+                  onClick={() => {
+                    setNewScheduleTitle(currentProfile.name);
+                    setNewScheduleSubtitle(currentProfile.subtitle);
+                    setIsEditScheduleModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <Pencil size={14} />
+                  Edit Info
+                </button>
+                <button 
+                  onClick={() => {
+                    setNewScheduleTitle("");
+                    setNewScheduleSubtitle("");
+                    setIsAddScheduleModalOpen(true);
+                  }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                 >
                   <Plus size={14} />
@@ -682,6 +703,28 @@ export default function LessonArchive() {
             </div>
             
             <div className="p-6 space-y-6">
+              {/* Inputs for Name and Subtitle */}
+              <div className="space-y-3">
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Schedule Name</label>
+                    <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                        placeholder="e.g. My Class Schedule"
+                        value={newScheduleTitle}
+                        onChange={(e) => setNewScheduleTitle(e.target.value)}
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description / Subtitle</label>
+                    <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                        placeholder="e.g. Semester 1 • 2026"
+                        value={newScheduleSubtitle}
+                        onChange={(e) => setNewScheduleSubtitle(e.target.value)}
+                    />
+                 </div>
+              </div>
+
               {/* Option 1: AI Import */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-violet-600 mb-1">
@@ -732,19 +775,85 @@ export default function LessonArchive() {
                  onClick={() => {
                     const newProfile: ScheduleProfile = {
                         id: `manual_${Date.now()}`,
-                        name: 'New Schedule',
-                        subtitle: 'Manual Entry',
+                        name: newScheduleTitle || 'New Schedule',
+                        subtitle: newScheduleSubtitle || 'Manual Entry',
                         schedule: {}
                     };
                     setProfiles(prev => [...prev, newProfile]);
                     setCurrentProfileId(newProfile.id);
                     setIsAddScheduleModalOpen(false);
+                    setNewScheduleTitle("");
+                    setNewScheduleSubtitle("");
                  }}
                >
                  <Plus size={16} />
                  Create Empty Schedule
                </button>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Schedule Modal */}
+      {isEditScheduleModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">Edit Schedule Info</h3>
+              <button onClick={() => setIsEditScheduleModalOpen(false)} className="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="space-y-3">
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Schedule Name</label>
+                    <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                        value={newScheduleTitle}
+                        onChange={(e) => setNewScheduleTitle(e.target.value)}
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description / Subtitle</label>
+                    <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                        value={newScheduleSubtitle}
+                        onChange={(e) => setNewScheduleSubtitle(e.target.value)}
+                    />
+                 </div>
+              </div>
+
+              <div className="flex gap-3">
+                {profiles.length > 1 && (
+                  <button 
+                    className="flex-1 py-3 rounded-xl border border-red-100 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                    onClick={() => {
+                        if(confirm("Are you sure you want to delete this schedule?")) {
+                            const newProfiles = profiles.filter(p => p.id !== currentProfileId);
+                            setProfiles(newProfiles);
+                            setCurrentProfileId(newProfiles[0].id);
+                            setIsEditScheduleModalOpen(false);
+                        }
+                    }}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                )}
+                <button 
+                  className="flex-[2] py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
+                  onClick={() => {
+                      setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, name: newScheduleTitle, subtitle: newScheduleSubtitle } : p));
+                      setIsEditScheduleModalOpen(false);
+                  }}
+                >
+                  <Save size={16} />
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
