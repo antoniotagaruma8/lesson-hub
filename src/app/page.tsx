@@ -332,7 +332,7 @@ export default function LessonArchive() {
               <div className="border-t border-slate-100 p-2">
                 <form>
                   <label className={`flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 rounded-lg cursor-pointer transition-colors ${isImporting ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImportSchedule} disabled={isImporting} />
+                    <input name="file" type="file" accept="image/*" className="hidden" onChange={handleImportSchedule} disabled={isImporting} />
                     {isImporting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     {isImporting ? "ANALYZING..." : "AI IMPORT SCHEDULE"}
                   </label>
