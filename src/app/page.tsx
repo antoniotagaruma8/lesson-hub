@@ -22,16 +22,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ==========================================
 // 2. MASTER SCHEDULE (Based on Image + UAH)
 // ==========================================
-type ScheduleSlot =
-  | { id: string; isBreak: true }
-  | {
-      id: string;
-      time: string;
-      subject: string;
-      room: string;
-      color: string;
-      isBreak?: false;
-    };
+interface ScheduleSlot {
+  id: string;
+  isBreak?: boolean;
+  time?: string;
+  subject?: string;
+  room?: string;
+  color?: string;
+}
 
 interface LessonEntry {
   id?: string;
