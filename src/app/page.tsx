@@ -203,7 +203,12 @@ export default function LessonArchive() {
     async function loadData() {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('lesson_plan').select('*').eq('date', dateKey);
+        const { data, error } = await supabase
+          .from('lesson_plan')
+          .select('*')
+          .eq('date', dateKey)
+          .eq('user_id', user.id);
+
         if (error) throw error;
         if (data) {
           const map: Record<string, LessonEntry> = {};
