@@ -89,3 +89,16 @@ export async function generateLinkTitleAction(url: string) {
     return { success: false, title: null };
   }
 }
+
+export async function shortenUrlAction(url: string) {
+  try {
+    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+    if (response.ok) {
+      const shortUrl = await response.text();
+      return { success: true, shortUrl };
+    }
+    return { success: false };
+  } catch (error) {
+    return { success: false };
+  }
+}
