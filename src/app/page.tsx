@@ -137,6 +137,31 @@ export default function LessonArchive() {
   const [isImporting, setIsImporting] = useState(false);
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
 
+  // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
+  if (SUPABASE_URL.includes("placeholder")) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-red-50 p-6 text-center">
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-red-100 max-w-lg">
+          <div className="mx-auto w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+            <Lock size={24} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Missing Configuration</h2>
+          <p className="text-slate-600 mb-6">
+            The app is trying to connect to a placeholder Supabase URL. This usually means your environment variables are missing locally.
+          </p>
+          <div className="bg-slate-900 text-slate-200 p-4 rounded-lg text-left text-xs font-mono mb-6 overflow-x-auto">
+            <p># .env.local</p>
+            <p>NEXT_PUBLIC_SUPABASE_URL=...</p>
+            <p>NEXT_PUBLIC_SUPABASE_ANON_KEY=...</p>
+          </div>
+          <p className="text-sm text-slate-500">
+            Create a <code>.env.local</code> file in your project folder and restart the server.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const dateKey = format(date, 'yyyy-MM-dd');
   const dayIndex = date.getDay();
   const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0];
