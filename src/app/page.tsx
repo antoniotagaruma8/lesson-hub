@@ -272,7 +272,7 @@ export default function LessonArchive() {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('links')
+          .from('lesson_plan')
           .select('*')
           .eq('date', dateKey)
           .eq('user_id', targetUserId);
@@ -386,6 +386,7 @@ export default function LessonArchive() {
       };
       
       setProfiles(prev => [...prev, newProfile]);
+      saveProfileToDB(newProfile); // Save imported
       setCurrentProfileId(newProfile.id);
       setIsAddScheduleModalOpen(false);
       setNewScheduleTitle("");
@@ -404,30 +405,29 @@ export default function LessonArchive() {
     
     let updatedProfile: ScheduleProfile | null = null;
 
-    setProfiles(prev => {
-      const newProfiles = prev.map(p => {
-        if (p.id !== currentProfileId) return p;
-        
-        const newSchedule = { ...p.schedule };
-        const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
-        
-        if (editingSlot.slotIndex === -1) {
-          // Add new
-          daySlots.push(editingSlot.slot);
-        } else {
-          // Update existing
-          daySlots[editingSlot.slotIndex] = editingSlot.slot;
-        }
-        
-        // Sort by time
-        daySlots.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const newProfiles = profiles.map(p => {
+      if (p.id !== currentProfileId) return p;
+      
+      const newSchedule = { ...p.schedule };
+      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+      
+      if (editingSlot.slotIndex === -1) {
+        // Add new
+        daySlots.push(editingSlot.slot);
+      } else {
+        // Update existing
+        daySlots[editingSlot.slotIndex] = editingSlot.slot;
+      }
+      
+      // Sort by time
+      daySlots.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
-        newSchedule[editingSlot.dayIndex] = daySlots;
-        updatedProfile = { ...p, schedule: newSchedule };
-        return updatedProfile;
-      });
-      return newProfiles;
+      newSchedule[editingSlot.dayIndex] = daySlots;
+      updatedProfile = { ...p, schedule: newSchedule };
+      return updatedProfile;
     });
+
+    setProfiles(newProfiles);
 
     if (updatedProfile) {
       saveProfileToDB(updatedProfile);
@@ -440,20 +440,19 @@ export default function LessonArchive() {
 
     let updatedProfile: ScheduleProfile | null = null;
 
-    setProfiles(prev => {
-      const newProfiles = prev.map(p => {
-        if (p.id !== currentProfileId) return p;
-        
-        const newSchedule = { ...p.schedule };
-        const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
-        daySlots.splice(editingSlot.slotIndex, 1);
-        
-        newSchedule[editingSlot.dayIndex] = daySlots;
-        updatedProfile = { ...p, schedule: newSchedule };
-        return updatedProfile;
-      });
-      return newProfiles;
+    const newProfiles = profiles.map(p => {
+      if (p.id !== currentProfileId) return p;
+      
+      const newSchedule = { ...p.schedule };
+      const daySlots = [...(newSchedule[editingSlot.dayIndex] || [])];
+      daySlots.splice(editingSlot.slotIndex, 1);
+      
+      newSchedule[editingSlot.dayIndex] = daySlots;
+      updatedProfile = { ...p, schedule: newSchedule };
+      return updatedProfile;
     });
+
+    setProfiles(newProfiles);
 
     if (updatedProfile) {
       saveProfileToDB(updatedProfile);
