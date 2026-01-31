@@ -23,6 +23,15 @@ export async function parseScheduleAction(formData: FormData) {
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString("base64");
 
+    // Ensure mimeType is valid
+    let mimeType = file.type;
+    if (!mimeType) {
+       const name = file.name.toLowerCase();
+       if (name.endsWith('.pdf')) mimeType = 'application/pdf';
+       else if (name.endsWith('.png')) mimeType = 'image/png';
+       else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    }
+
     const prompt = `
       You are a schedule parser. Analyze the attached image or PDF of a class schedule.
       Extract the weekly schedule and format it into a JSON object where keys are numbers 1-5 (Monday-Friday).
@@ -46,7 +55,7 @@ export async function parseScheduleAction(formData: FormData) {
       {
         inlineData: {
           data: base64,
-          mimeType: file.type,
+          mimeType: mimeType || "application/octet-stream",
         },
       },
     ]);
@@ -54,15 +63,22 @@ export async function parseScheduleAction(formData: FormData) {
     const response = await result.response;
     let text = response.text();
     
-    // Clean markdown if present
-    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    // Robust JSON extraction: Find the first '{' and last '}'
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      text = text.substring(jsonStart, jsonEnd + 1);
+    } else {
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    }
 
     const scheduleData = JSON.parse(text);
     return { success: true, data: scheduleData };
 
   } catch (error) {
     console.error("AI Parsing Error:", error);
-    return { success: false, message: "Failed to parse schedule. Please try again." };
+    return { success: false, message: `Failed to parse schedule: ${error instanceof Error ? error.message : "Unknown error"}` };
   }
 }
 
