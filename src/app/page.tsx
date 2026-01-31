@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
+import { parseScheduleAction, generateLinkTitleAction } from "./actions";
 import { parseScheduleAction, generateLinkTitleAction, shortenUrlAction } from "./actions";
 
 // ==========================================
@@ -89,28 +90,12 @@ const MAIN_SCHEDULE: Record<number, ScheduleSlot[]> = {
   ]
 };
 
-const ACADEMY_SCHEDULE: Record<number, ScheduleSlot[]> = {
-  1: [ // MONDAY
-    { id: 'aca_mon_1', time: '16:00-17:00', subject: 'Academy English', room: 'Room A', color: 'bg-indigo-600' },
-    { id: 'aca_mon_2', time: '17:00-18:00', subject: 'Academy Speaking', room: 'Room B', color: 'bg-indigo-500' },
-  ],
-  3: [ // WEDNESDAY
-    { id: 'aca_wed_1', time: '16:00-17:30', subject: 'Exam Prep', room: 'Room A', color: 'bg-violet-600' },
-  ]
-};
-
 const SCHEDULE_PROFILES: ScheduleProfile[] = [
   {
     id: 'main',
     name: 'myLesson Hub',
     subtitle: 'IES Simone Veil • UAH',
     schedule: MAIN_SCHEDULE
-  },
-  {
-    id: 'academy',
-    name: 'Academy B',
-    subtitle: 'Afternoon Classes',
-    schedule: ACADEMY_SCHEDULE
   }
 ];
 
@@ -138,6 +123,7 @@ export default function LessonArchive() {
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false);
 
   // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
   if (SUPABASE_URL.includes("placeholder")) {
@@ -319,6 +305,7 @@ export default function LessonArchive() {
       
       setProfiles(prev => [...prev, newProfile]);
       setCurrentProfileId(newProfile.id);
+      setIsAddScheduleModalOpen(false);
       alert("Schedule imported successfully!");
     } else {
       alert(result.message || "Failed to import schedule.");
@@ -361,15 +348,15 @@ export default function LessonArchive() {
                 </button>
               ))}
               
-              {/* Import Button */}
+              {/* Add Schedule Button */}
               <div className="border-t border-slate-100 p-2">
-                <form>
-                  <label className={`flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 rounded-lg cursor-pointer transition-colors ${isImporting ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <input name="file" type="file" accept="image/*,application/pdf" className="hidden" onChange={handleImportSchedule} disabled={isImporting} />
-                    {isImporting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    {isImporting ? "ANALYZING..." : "AI IMPORT SCHEDULE"}
-                  </label>
-                </form>
+                <button 
+                  onClick={() => setIsAddScheduleModalOpen(true)}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <Plus size={14} />
+                  Add Schedule
+                </button>
               </div>
 
             </div>
@@ -379,6 +366,10 @@ export default function LessonArchive() {
           {/* Share Button */}
           {targetUserId && (
             <button 
+              onClick={() => {
+                const url = `${window.location.origin}?uid=${targetUserId}`;
+                navigator.clipboard.writeText(url);
+                alert("Public link copied to clipboard!");
               onClick={async () => {
                 if (isSharing) return;
                 setIsSharing(true);
@@ -390,9 +381,11 @@ export default function LessonArchive() {
                 alert(`Link copied: ${urlToCopy}`);
                 setIsSharing(false);
               }}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
               className={`p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors ${isSharing ? 'opacity-50 cursor-wait' : ''}`}
               title="Share Schedule"
             >
+              <Share2 size={20} />
               {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
             </button>
           )}
@@ -684,6 +677,86 @@ export default function LessonArchive() {
         </div>
       </div>
       
+      {/* Add Schedule Modal */}
+      {isAddScheduleModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">Add New Schedule</h3>
+              <button onClick={() => setIsAddScheduleModalOpen(false)} className="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Option 1: AI Import */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-violet-600 mb-1">
+                  <Sparkles size={18} />
+                  <span className="text-sm font-bold uppercase tracking-wider">AI Auto-Create</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-3">
+                  Upload a document (PDF or Image) of your schedule. AI will interpret it and create a profile for you.
+                </p>
+                
+                <form>
+                  <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-violet-200 rounded-xl bg-violet-50/30 hover:bg-violet-50 hover:border-violet-300 cursor-pointer transition-all group ${isImporting ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {isImporting ? (
+                        <>
+                          <Loader2 size={32} className="text-violet-500 animate-spin mb-2" />
+                          <p className="text-sm text-violet-600 font-medium">Analyzing document...</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={32} className="text-violet-400 group-hover:text-violet-600 mb-2 transition-colors" />
+                          <p className="text-sm text-slate-600 font-medium">Click to upload</p>
+                          <p className="text-xs text-slate-400">PDF, PNG, JPG</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      name="file" 
+                      type="file" 
+                      accept="image/*,application/pdf" 
+                      className="hidden" 
+                      onChange={handleImportSchedule} 
+                      disabled={isImporting} 
+                    />
+                  </label>
+                </form>
+              </div>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-300 text-xs font-bold uppercase">OR</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
+               {/* Option 2: Manual */}
+               <button 
+                 className="w-full py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                 onClick={() => {
+                    const newProfile: ScheduleProfile = {
+                        id: `manual_${Date.now()}`,
+                        name: 'New Schedule',
+                        subtitle: 'Manual Entry',
+                        schedule: {}
+                    };
+                    setProfiles(prev => [...prev, newProfile]);
+                    setCurrentProfileId(newProfile.id);
+                    setIsAddScheduleModalOpen(false);
+                 }}
+               >
+                 <Plus size={16} />
+                 Create Empty Schedule
+               </button>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* GLOBAL STYLES FOR CALENDAR */}
       <style jsx global>{`
         .react-calendar { width: 100%; background: transparent; font-family: inherit; border: none; }
