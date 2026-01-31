@@ -195,6 +195,10 @@ export default function LessonArchive() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setIsAdmin(false);
+    setEntries({});
+    window.location.reload();
   };
 
   // Load Data
