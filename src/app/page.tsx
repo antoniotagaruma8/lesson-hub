@@ -257,6 +257,32 @@ export default function LessonArchive() {
     }
   };
 
+  // Delete Data
+  const handleDeleteLesson = async (slotId: string) => {
+    if (!user || !isOwner) return;
+    if (!confirm("Are you sure you want to clear all data for this lesson?")) return;
+
+    try {
+      const { error } = await supabase
+        .from('lesson_plan')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('date', dateKey)
+        .eq('slot_id', slotId);
+
+      if (error) throw error;
+
+      setEntries(prev => {
+        const newEntries = { ...prev };
+        delete newEntries[slotId];
+        return newEntries;
+      });
+    } catch (err) {
+      console.error("Error deleting lesson:", err);
+      alert("Failed to delete lesson");
+    }
+  };
+
   // Upload Image
   const handleUpload = async (slotId: string, file: File) => {
     if(!file || !user || !isOwner) return;
@@ -846,6 +872,17 @@ export default function LessonArchive() {
                                  ))}
                                </div>
                              </div>
+                          </div>
+
+                          {/* Delete Lesson Button */}
+                          <div className="flex justify-end pt-2 border-t border-slate-100 mt-2">
+                            <button 
+                              onClick={() => handleDeleteLesson(slot.id)}
+                              className="flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50"
+                            >
+                              <Trash2 size={14} />
+                              Clear Lesson Data
+                            </button>
                           </div>
                         </div>
                       </div>
