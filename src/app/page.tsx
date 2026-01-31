@@ -819,6 +819,19 @@ export default function LessonArchive() {
                 {isOpen && (
                   <div className="px-4 pb-4 pt-0 border-t border-slate-100 bg-slate-50/50">
                     
+                    {/* Edit Info Button (Visible inside expanded) */}
+                    {isAdmin && (
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => setEditingSlot({ dayIndex, slotIndex: idx, slot })}
+                          className="text-xs flex items-center gap-1 text-slate-500 font-bold hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-slate-200 bg-white"
+                        >
+                          <Pencil size={12} />
+                          Edit Time/Subject
+                        </button>
+                      </div>
+                    )}
+                    
                     {/* 1. PRESENTATION LINK (Public) */}
                     <div className="mt-4">
                        {isAdmin ? (
