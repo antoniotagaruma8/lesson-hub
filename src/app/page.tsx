@@ -166,30 +166,17 @@ export default function LessonArchive() {
 
   // Init: Check URL params & Auth Session
   useEffect(() => {
-    const init = async () => {
-      try {
-        // 1. Check for shared link UID
-        if (typeof window !== 'undefined') {
-          const params = new URLSearchParams(window.location.search);
-          const uid = params.get('uid');
-          if (uid) setPublicUserId(uid);
-        }
-
-        // 2. Check Auth
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error("Auth init error:", error);
-      } finally {
-        setIsAuthChecking(false);
-      }
-    };
-
-    init();
+    // 1. Check for shared link UID
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const uid = params.get('uid');
+      if (uid) setPublicUserId(uid);
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) setIsAdmin(false);
+      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -198,7 +185,7 @@ export default function LessonArchive() {
   const handleLogin = async () => {
     // Ensure this URL is allowed in Supabase Dashboard > Authentication > URL Configuration
     // If not allowed, Supabase will fallback to the default Site URL (usually localhost)
-    const redirectTo = window.location.origin;
+    const redirectTo = window.location.href;
 
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -387,9 +374,9 @@ export default function LessonArchive() {
   }
 
   // ------------------------------------------
-  // MARKETING PAGE (If not logged in & not viewing shared)
+  // MARKETING PAGE (If not logged in)
   // ------------------------------------------
-  if (!user && !publicUserId) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 selection:bg-blue-100">
         {/* Navbar */}
