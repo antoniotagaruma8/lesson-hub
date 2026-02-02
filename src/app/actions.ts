@@ -113,8 +113,8 @@ export async function shortenUrlAction(url: string) {
       const shortUrl = await response.text();
       return { success: true, shortUrl };
     }
-    return { success: false };
+    return { success: true, shortUrl: url };
   } catch (error) {
-    return { success: false };
+    return { success: true, shortUrl: url };
   }
 }
