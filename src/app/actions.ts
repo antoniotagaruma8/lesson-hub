@@ -108,7 +108,7 @@ export async function generateLinkTitleAction(url: string) {
 
 export async function shortenUrlAction(url: string) {
   try {
-    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+    const response = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`);
     if (response.ok) {
       const shortUrl = await response.text();
       return { success: true, shortUrl };
