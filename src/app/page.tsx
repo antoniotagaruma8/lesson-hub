@@ -625,6 +625,13 @@ function LessonArchiveContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* User Email Indicator */}
+          {user && (
+            <span className="hidden md:block text-xs font-medium text-slate-500 mr-2">
+              {user.email}
+            </span>
+          )}
+
           {/* Share Button */}
           {targetUserId && (
             <button 
