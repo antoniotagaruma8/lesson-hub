@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
@@ -109,6 +110,17 @@ const HOLIDAYS: Record<string, string> = {
 };
 
 export default function LessonArchive() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+      <LessonArchiveContent />
+    </Suspense>
+  );
+}
+
+function LessonArchiveContent() {
+  const searchParams = useSearchParams();
+  const publicUserId = searchParams.get('uid');
+
   const [date, setDate] = useState<Date>(new Date());
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -120,7 +132,6 @@ export default function LessonArchive() {
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(SCHEDULE_PROFILES);
   const [isImporting, setIsImporting] = useState(false);
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
-  const [publicUserId, setPublicUserId] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false);
   const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
@@ -166,13 +177,6 @@ export default function LessonArchive() {
 
   // Init: Check URL params & Auth Session
   useEffect(() => {
-    // 1. Check for shared link UID
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const uid = params.get('uid');
-      if (uid) setPublicUserId(uid);
-    }
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) setIsAdmin(false);
@@ -208,13 +212,13 @@ export default function LessonArchive() {
 
   // Load Schedules from DB
   useEffect(() => {
-    if (!user) return;
+    if (!targetUserId) return;
 
     const fetchSchedules = async () => {
       const { data, error } = await supabase
         .from('schedules')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', targetUserId);
 
       if (data && data.length > 0) {
         const loadedProfiles = data.map((d: any) => ({
@@ -232,7 +236,7 @@ export default function LessonArchive() {
     };
 
     fetchSchedules();
-  }, [user]);
+  }, [targetUserId]);
 
   // Helper to save a specific profile to DB
   const saveProfileToDB = async (profile: ScheduleProfile) => {
@@ -379,7 +383,6 @@ export default function LessonArchive() {
     if (result.success && result.data) {
       const newProfile: ScheduleProfile = {
         id: `imported_${Date.now()}`,
-        name: 'Imported Schedule',
         name: newScheduleTitle || 'Imported Schedule',
         subtitle: newScheduleSubtitle || 'AI Generated',
         schedule: result.data
@@ -477,7 +480,7 @@ export default function LessonArchive() {
   // ------------------------------------------
   // MARKETING PAGE (If not logged in)
   // ------------------------------------------
-  if (!user) {
+  if (!user && !publicUserId) {
     return (
       <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 selection:bg-blue-100">
         {/* Navbar */}
@@ -628,7 +631,9 @@ export default function LessonArchive() {
               onClick={async () => {
                 if (isSharing) return;
                 setIsSharing(true);
-                const longUrl = `${window.location.origin}?uid=${targetUserId}`;
+                // Construct URL robustly using current path to avoid redirects to root
+                const baseUrl = window.location.origin + window.location.pathname;
+                const longUrl = `${baseUrl}?uid=${targetUserId}`;
                 const result = await shortenUrlAction(longUrl);
                 const urlToCopy = result.success && result.shortUrl ? result.shortUrl : longUrl;
                 
@@ -641,6 +646,14 @@ export default function LessonArchive() {
             >
               {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
             </button>
+          )}
+
+          {/* Guest Indicator */}
+          {!user && publicUserId && (
+             <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+               <BookOpen size={14} />
+               Guest View
+             </span>
           )}
 
           {user ? (
