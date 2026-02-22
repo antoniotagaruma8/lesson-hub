@@ -11,6 +11,23 @@ import {
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
 import { parseScheduleAction, generateLinkTitleAction, shortenUrlAction } from "./actions";
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ==========================================
 // 1. CONFIGURATION (ILAGAY ANG API KEYS DITO)
@@ -42,6 +59,7 @@ interface LessonEntry {
 }
 
 interface LinkItem {
+  id: string;
   url: string;
   title: string;
 }
@@ -109,6 +127,194 @@ const HOLIDAYS: Record<string, string> = {
   "2026-12-08": "Inmaculada", "2026-12-25": "Navidad"
 };
 
+// Helper to parse links and ensure IDs
+const parseLinks = (str?: string): LinkItem[] => {
+  if (!str) return [];
+  try {
+    const parsed = JSON.parse(str);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: any, i: number) => {
+        const base = typeof item === 'string' ? { url: item, title: `Link ${i + 1}` } : { url: item.url, title: item.title || `Link ${i + 1}` };
+        return { ...base, id: item.id || `link-${i}` };
+      });
+    }
+    return [{ url: str, title: 'Link 1', id: 'link-0' }];
+  } catch {
+    return [{ url: str, title: 'Link 1', id: 'link-0' }];
+  }
+};
+
+function SortableLinkItem({ id, children }: { id: string, children: (args: { attributes: any, listeners: any, isDragging: boolean }) => React.ReactNode }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
+    position: 'relative' as 'relative',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="touch-none">
+      {children({ attributes, listeners, isDragging })}
+    </div>
+  );
+}
+
+function LinkManager({ 
+  linksJson, 
+  onSave 
+}: { 
+  linksJson?: string, 
+  onSave: (json: string) => void 
+}) {
+  const [items, setItems] = useState<LinkItem[]>(() => parseLinks(linksJson));
+  const [generatingLink, setGeneratingLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    setItems(parseLinks(linksJson));
+  }, [linksJson]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        onSave(JSON.stringify(newItems));
+        return newItems;
+      });
+    }
+  };
+
+  const updateItem = (index: number, updates: Partial<LinkItem>) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], ...updates };
+    setItems(newItems);
+    onSave(JSON.stringify(newItems));
+  };
+
+  const deleteItem = (index: number) => {
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems);
+    onSave(JSON.stringify(newItems));
+  };
+
+  const addItem = () => {
+    const newItem = { id: `link-${Date.now()}`, url: "", title: "New Link" };
+    const newItems = [...items, newItem];
+    setItems(newItems);
+    onSave(JSON.stringify(newItems));
+  };
+
+  return (
+    <DndContext 
+      sensors={sensors} 
+      collisionDetection={closestCenter} 
+      onDragEnd={handleDragEnd}
+    >
+      <div className="relative">
+        <span className="absolute -top-2 left-2 bg-slate-50 px-1 text-[10px] text-blue-600 font-bold uppercase">Public Links</span>
+        <div className="flex flex-col gap-2 bg-white border border-slate-200 rounded-lg p-3">
+          <SortableContext 
+            items={items.map(i => i.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {items.map((linkItem, i) => (
+              <SortableLinkItem key={linkItem.id} id={linkItem.id}>
+                {({ attributes, listeners, isDragging }) => (
+                  <div className={`flex flex-col gap-1 p-2 bg-slate-50 rounded border border-slate-100 group/item ${isDragging ? 'shadow-lg ring-2 ring-blue-500/50 bg-blue-50' : ''}`}>
+                  <div className="flex gap-2 items-center">
+                    <div {...attributes} {...listeners} className="cursor-grab text-slate-400 hover:text-slate-600">
+                      <GripVertical size={16} />
+                    </div>
+                    <input 
+                      className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 focus:border-blue-500 outline-none transition-colors"
+                      placeholder="Link Title"
+                      value={linkItem.title}
+                      onChange={(e) => updateItem(i, { title: e.target.value })}
+                    />
+                    <button 
+                      onClick={async () => {
+                        if (!linkItem.url) return;
+                        setGeneratingLink(linkItem.id);
+                        const res = await generateLinkTitleAction(linkItem.url);
+                        if (res.success && res.title) {
+                          updateItem(i, { title: res.title });
+                        }
+                        setGeneratingLink(null);
+                      }}
+                      className={`text-slate-400 hover:text-violet-500 transition-colors ${generatingLink === linkItem.id ? 'text-violet-500 cursor-wait' : ''}`}
+                      title="Auto-generate Title"
+                      disabled={generatingLink === linkItem.id}
+                    >
+                      {generatingLink === linkItem.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    </button>
+                    <button 
+                      onClick={() => deleteItem(i)}
+                      className="text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <input 
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none transition-colors text-slate-900 ml-6 w-[calc(100%-1.5rem)]"
+                    placeholder="Paste URL..."
+                    value={linkItem.url}
+                    onChange={(e) => {
+                      const newUrl = e.target.value;
+                      let newTitle = linkItem.title;
+                      
+                      // Auto-generate title if generic
+                      if (newTitle === "New Link" || newTitle === "" || newTitle.startsWith("Link ")) {
+                        try {
+                          const urlObj = new URL(newUrl);
+                          let domain = urlObj.hostname.replace('www.', '').split('.')[0];
+                          if (domain) {
+                            newTitle = domain.charAt(0).toUpperCase() + domain.slice(1);
+                          }
+                        } catch {}
+                      }
+                      updateItem(i, { url: newUrl, title: newTitle });
+                    }}
+                  />
+                </div>
+                )}
+              </SortableLinkItem>
+            ))}
+          </SortableContext>
+          <button 
+            onClick={addItem}
+            className="flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 py-2 rounded border border-dashed border-blue-200 transition-colors"
+          >
+            <Plus size={14} /> ADD LINK
+          </button>
+        </div>
+      </div>
+    </DndContext>
+  );
+}
+
 export default function LessonArchive() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
@@ -131,7 +337,6 @@ function LessonArchiveContent() {
   const [currentProfileId, setCurrentProfileId] = useState<string>('main');
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(SCHEDULE_PROFILES);
   const [isImporting, setIsImporting] = useState(false);
-  const [generatingLink, setGeneratingLink] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false);
   const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
@@ -355,22 +560,6 @@ function LessonArchiveContent() {
     }
   };
 
-  // Helper to handle multiple links (JSON or single string)
-  const getLinks = (str?: string): LinkItem[] => {
-    if (!str) return [];
-    try {
-      const parsed = JSON.parse(str);
-      if (Array.isArray(parsed)) {
-        return parsed.map((item, i) => {
-          if (typeof item === 'string') return { url: item, title: `Link ${i + 1}` };
-          return { url: item.url, title: item.title || `Link ${i + 1}` };
-        });
-      }
-      return [{ url: str, title: 'Link 1' }];
-    } catch {
-      return [{ url: str, title: 'Link 1' }];
-    }
-  };
 
   // Handle AI Schedule Import
   const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -854,87 +1043,15 @@ function LessonArchiveContent() {
                     {/* 1. PRESENTATION LINK (Public) */}
                     <div className="mt-4">
                        {isAdmin ? (
-                         <div className="relative">
-                           <span className="absolute -top-2 left-2 bg-slate-50 px-1 text-[10px] text-blue-600 font-bold uppercase">Public Links</span>
-                           <div className="flex flex-col gap-2 bg-white border border-slate-200 rounded-lg p-3">
-                             {getLinks(data.link).map((linkItem, i) => (
-                               <div key={i} className="flex flex-col gap-1 p-2 bg-slate-50 rounded border border-slate-100">
-                                 <div className="flex gap-2 items-center">
-                                   <input 
-                                     className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 focus:border-blue-500 outline-none transition-colors"
-                                     placeholder="Link Title"
-                                     value={linkItem.title}
-                                     onChange={(e) => {
-                                       const newLinks = getLinks(data.link);
-                                       newLinks[i].title = e.target.value;
-                                       saveData(slot.id, { link: JSON.stringify(newLinks) });
-                                     }}
-                                   />
-                                   <button 
-                                     onClick={async () => {
-                                       if (!linkItem.url) return;
-                                       setGeneratingLink(`${slot.id}-${i}`);
-                                       const res = await generateLinkTitleAction(linkItem.url);
-                                       if (res.success && res.title) {
-                                         const newLinks = getLinks(data.link);
-                                         newLinks[i].title = res.title;
-                                         await saveData(slot.id, { link: JSON.stringify(newLinks) });
-                                       }
-                                       setGeneratingLink(null);
-                                     }}
-                                     className={`text-slate-400 hover:text-violet-500 transition-colors ${generatingLink === `${slot.id}-${i}` ? 'text-violet-500 cursor-wait' : ''}`}
-                                     title="Auto-generate Title & Save"
-                                     disabled={generatingLink === `${slot.id}-${i}`}
-                                   >
-                                     {generatingLink === `${slot.id}-${i}` ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                   </button>
-                                   <button 
-                                     onClick={() => {
-                                       const newLinks = getLinks(data.link).filter((_, idx) => idx !== i);
-                                       saveData(slot.id, { link: JSON.stringify(newLinks) });
-                                     }}
-                                     className="text-slate-400 hover:text-red-500 transition-colors"
-                                   >
-                                     <Trash2 size={14} />
-                                   </button>
-                                 </div>
-                                 <input 
-                                   className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none transition-colors text-slate-900"
-                                   placeholder="Paste URL..."
-                                   value={linkItem.url}
-                                   onChange={(e) => {
-                                     const newUrl = e.target.value;
-                                     const newLinks = getLinks(data.link);
-                                     newLinks[i].url = newUrl;
-                                     
-                                     // Auto-generate title if generic
-                                     if (newLinks[i].title === "New Link" || newLinks[i].title === "" || newLinks[i].title.startsWith("Link ")) {
-                                        try {
-                                          const urlObj = new URL(newUrl);
-                                          let domain = urlObj.hostname.replace('www.', '').split('.')[0];
-                                          if (domain) {
-                                            newLinks[i].title = domain.charAt(0).toUpperCase() + domain.slice(1);
-                                          }
-                                        } catch {}
-                                     }
-
-                                     saveData(slot.id, { link: JSON.stringify(newLinks) });
-                                   }}
-                                 />
-                               </div>
-                             ))}
-                             <button 
-                               onClick={() => saveData(slot.id, { link: JSON.stringify([...getLinks(data.link), { url: "", title: "New Link" }]) })}
-                               className="flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 py-2 rounded border border-dashed border-blue-200 transition-colors"
-                             >
-                               <Plus size={14} /> ADD LINK
-                             </button>
-                           </div>
-                         </div>
+                         <LinkManager 
+                           key={slot.id} // Reset state when slot changes
+                           linksJson={data.link} 
+                           onSave={(json) => saveData(slot.id, { link: json })} 
+                         />
                        ) : (
-                         getLinks(data.link).length > 0 ? (
+                         parseLinks(data.link).length > 0 ? (
                            <div className="flex flex-col gap-2">
-                             {getLinks(data.link).map((linkItem, i) => (
+                             {parseLinks(data.link).map((linkItem, i) => (
                                <a key={i} href={linkItem.url} target="_blank" className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg transition font-medium shadow-lg shadow-blue-500/20">
                                  <ExternalLink size={18} /> {linkItem.title}
                                </a>
