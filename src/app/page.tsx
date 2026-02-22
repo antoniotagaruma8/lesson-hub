@@ -6,7 +6,7 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import { 
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, GripVertical
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -234,7 +234,7 @@ function LinkManager({
       onDragEnd={handleDragEnd}
     >
       <div className="relative">
-        <span className="absolute -top-2 left-2 bg-slate-50 px-1 text-[10px] text-blue-600 font-bold uppercase">Public Links</span>
+        <span className="absolute -top-2 left-2 bg-slate-50 px-1 text-[10px] text-blue-600 font-bold uppercase">Manage Links</span>
         <div className="flex flex-col gap-2 bg-white border border-slate-200 rounded-lg p-3">
           <SortableContext 
             items={items.map(i => i.id)}
