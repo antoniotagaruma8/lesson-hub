@@ -243,11 +243,12 @@ function LinkManager({
             {items.map((linkItem, i) => (
               <SortableLinkItem key={linkItem.id} id={linkItem.id}>
                 {({ attributes, listeners, isDragging }) => (
-                  <div className={`flex flex-col gap-1 p-2 bg-slate-50 rounded border border-slate-100 group/item ${isDragging ? 'shadow-lg ring-2 ring-blue-500/50 bg-blue-50' : ''}`}>
-                  <div className="flex gap-2 items-center">
-                    <div {...attributes} {...listeners} className="cursor-grab text-slate-400 hover:text-slate-600">
+                  <div className={`flex items-start gap-2 p-2 bg-slate-50 rounded border border-slate-100 group/item ${isDragging ? 'shadow-lg ring-2 ring-blue-500/50 bg-blue-50' : ''}`}>
+                    <div {...attributes} {...listeners} className="mt-1.5 cursor-grab text-slate-400 hover:text-slate-600 touch-none">
                       <GripVertical size={16} />
                     </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                    <div className="flex gap-2 items-center">
                     <input 
                       className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 focus:border-blue-500 outline-none transition-colors"
                       placeholder="Link Title"
@@ -278,7 +279,7 @@ function LinkManager({
                     </button>
                   </div>
                   <input 
-                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none transition-colors text-slate-900 ml-6 w-[calc(100%-1.5rem)]"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none transition-colors text-slate-900"
                     placeholder="Paste URL..."
                     value={linkItem.url}
                     onChange={(e) => {
@@ -298,6 +299,7 @@ function LinkManager({
                       updateItem(i, { url: newUrl, title: newTitle });
                     }}
                   />
+                </div>
                 </div>
                 )}
               </SortableLinkItem>
