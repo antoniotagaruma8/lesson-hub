@@ -613,46 +613,47 @@ function LessonArchiveContent() {
             </button>
 
             {/* Dropdown Menu */}
-            <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden hidden group-hover:block animate-in fade-in slide-in-from-top-2 z-50">
-              {profiles.map(profile => (
-                <button
-                  key={profile.id}
-                  onClick={() => setCurrentProfileId(profile.id)}
-                  className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${currentProfileId === profile.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600'}`}
-                >
-                  <span>{profile.name}</span>
-                  {currentProfileId === profile.id && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
-                </button>
-              ))}
+            <div className="absolute top-full left-0 pt-2 w-56 hidden group-hover:block z-50">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                {profiles.map(profile => (
+                  <button
+                    key={profile.id}
+                    onClick={() => setCurrentProfileId(profile.id)}
+                    className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${currentProfileId === profile.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600'}`}
+                  >
+                    <span>{profile.name}</span>
+                    {currentProfileId === profile.id && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
+                  </button>
+                ))}
 
-              {/* Actions */}
-              <div className="border-t border-slate-100 p-2 space-y-1">
-                <button
-                  onClick={() => {
-                    if (!currentProfile) return;
-                    setNewScheduleTitle(currentProfile.name);
-                    setNewScheduleSubtitle(currentProfile.subtitle);
-                    setIsEditScheduleModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
-                  disabled={!currentProfile}
-                >
-                  <Pencil size={14} />
-                  Edit Info
-                </button>
-                <button
-                  onClick={() => {
-                    setNewScheduleTitle("");
-                    setNewScheduleSubtitle("");
-                    setIsAddScheduleModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <Plus size={14} />
-                  Add Schedule
-                </button>
+                {/* Actions */}
+                <div className="border-t border-slate-100 p-2 space-y-1">
+                  <button
+                    onClick={() => {
+                      if (!currentProfile) return;
+                      setNewScheduleTitle(currentProfile.name);
+                      setNewScheduleSubtitle(currentProfile.subtitle);
+                      setIsEditScheduleModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                    disabled={!currentProfile}
+                  >
+                    <Pencil size={14} />
+                    Edit Info
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewScheduleTitle("");
+                      setNewScheduleSubtitle("");
+                      setIsAddScheduleModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <Plus size={14} />
+                    Add Schedule
+                  </button>
+                </div>
               </div>
-
             </div>
           </div>
         </div>
