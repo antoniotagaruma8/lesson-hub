@@ -6,10 +6,11 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import {
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, HelpCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
+import Joyride, { Step } from "react-joyride";
 import { parseScheduleAction, generateLinkTitleAction, shortenUrlAction } from "./actions";
 
 // ==========================================
@@ -145,6 +146,55 @@ function LessonArchiveContent() {
   const [newScheduleSubtitle, setNewScheduleSubtitle] = useState("");
   const [editingSlot, setEditingSlot] = useState<{ dayIndex: number, slotIndex: number, slot: ScheduleSlot } | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  // Tour State
+  const [runTour, setRunTour] = useState(false);
+  const [tourSteps] = useState<Step[]>([
+    {
+      target: 'body',
+      content: 'Welcome to Lesson Hub! Let us show you around your new teaching dashboard.',
+      placement: 'center',
+    },
+    {
+      target: '.tour-step-profile',
+      content: 'Here you can select tracking profiles if you manage different schedules (like different schools or semesters).',
+      placement: 'bottom',
+    },
+    {
+      target: '.tour-step-calendar',
+      content: 'Select any date on the calendar to view or edit the classes for that specific day.',
+      placement: 'right',
+    },
+    {
+      target: '.tour-step-schedule',
+      content: 'This is your daily schedule. You can click on any class slot to add notes, links, or image resources.',
+      placement: 'left',
+    },
+    {
+      target: '.tour-step-share',
+      content: 'Need to share your schedule? Click here to generate a link to send to your students or colleagues.',
+      placement: 'bottom',
+    }
+  ]);
+
+  // Check if it's the user's first time logging in to auto-start the tour
+  useEffect(() => {
+    if (user && !publicUserId) {
+      const hasSeenTour = localStorage.getItem('lesson_hub_has_seen_tour');
+      if (!hasSeenTour) {
+        setRunTour(true);
+      }
+    }
+  }, [user, publicUserId]);
+
+  const handleTourCallback = (data: any) => {
+    const { status } = data;
+    const finishedStatuses: string[] = ['finished', 'skipped'];
+    if (finishedStatuses.includes(status)) {
+      setRunTour(false);
+      localStorage.setItem('lesson_hub_has_seen_tour', 'true');
+    }
+  };
 
   // CHECK: Kung naka-placeholder pa rin ang URL, ipakita ang error screen
   if (SUPABASE_URL.includes("placeholder")) {
@@ -512,80 +562,130 @@ function LessonArchiveContent() {
   // ------------------------------------------
   if (!user && !publicUserId) {
     return (
-      <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 selection:bg-blue-100">
+      <div className="min-h-screen bg-[#0a0a0e] flex flex-col font-sans text-slate-200 selection:bg-blue-500/30 selection:text-white relative overflow-hidden">
+
+        {/* Background Effects */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] opacity-50 pointer-events-none"></div>
+        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] opacity-40 pointer-events-none"></div>
+        <div className="absolute top-1/4 -left-64 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] opacity-30 pointer-events-none"></div>
+
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+
         {/* Navbar */}
-        <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-slate-900">
-            <div className="p-2 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/30">
+        <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full relative z-10">
+          <div className="flex items-center gap-3 font-extrabold text-2xl tracking-tight text-white">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-violet-600 text-white rounded-xl shadow-lg shadow-blue-500/20 border border-white/10">
               <Layers size={24} />
             </div>
             Lesson Hub
           </div>
           <button
             onClick={handleLogin}
-            className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all text-sm shadow-lg hover:shadow-xl"
+            className="px-6 py-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold hover:bg-white/20 transition-all text-sm shadow-lg hover:shadow-xl"
           >
             Sign In
           </button>
         </nav>
 
         {/* Hero */}
-        <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wider mb-8 border border-blue-100 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Sparkles size={14} />
-            For Modern Teachers
+        <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24 max-w-5xl mx-auto relative z-10 w-full mb-12">
+
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 shadow-[0_0_30px_rgba(16,185,129,0.15)] ring-1 ring-inset ring-emerald-500/20">
+            <Sparkles size={14} className="text-emerald-400" />
+            100% Free Forever
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 leading-[1.1] animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white mb-8 leading-[1.05] animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             Organize your teaching <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">in one place.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 drop-shadow-sm">
+              in one place, for free.
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            Say goodbye to messy paper planners. Manage your schedules, lesson plans, and resources effortlessly with Lesson Hub.
+
+          <p className="text-xl text-slate-400 mb-14 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 font-medium">
+            Say goodbye to messy paper planners and expensive subscriptions. Manage your schedules, lesson plans, and resources effortlessly without paying a dime.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+
+          <div className="flex flex-col sm:flex-row gap-5 w-full justify-center animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             <button
               onClick={handleLogin}
-              className="px-8 py-4 rounded-full bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 flex items-center justify-center gap-2 group"
+              className="px-8 py-4 rounded-full bg-white text-slate-900 font-bold text-lg hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 group border border-white"
             >
-              Get Started for Free
+              Start Using for Free
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => window.open('https://github.com', '_blank')}
-              className="px-8 py-4 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-all hover:border-slate-300"
+              className="px-8 py-4 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white font-bold text-lg hover:bg-white/10 transition-all hover:border-white/20"
             >
               Learn More
             </button>
           </div>
 
-          {/* Feature Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 text-left w-full animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all group">
-              <div className="w-14 h-14 bg-white text-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+          {/* Feature Grid - Bento Box Style */}
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mt-32 text-left w-full animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500 max-w-6xl">
+
+            {/* Main Free Feature - Spans full width */}
+            <div className="md:col-span-6 p-8 md:p-12 rounded-3xl bg-emerald-500/5 backdrop-blur-sm border border-emerald-500/20 hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all group relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/30 transition-colors"></div>
+              <div className="flex items-start md:items-center gap-8 flex-col md:flex-row relative z-10">
+                <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                  <Unlock size={40} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-3xl mb-3 text-white tracking-tight">Completely Free, No Hidden Costs</h3>
+                  <p className="text-emerald-100/70 leading-relaxed text-lg font-medium">We believe essential tools for educators should be accessible to everyone. There are no premium tiers, no paywalls, and no hidden subscriptions. Everything is available to you right from the start.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub feature 1 */}
+            <div className="md:col-span-3 lg:col-span-2 p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-blue-500/30 hover:bg-white/[0.07] transition-all group relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/20 rounded-full blur-[40px] group-hover:bg-blue-500/30 transition-colors"></div>
+              <div className="w-14 h-14 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
                 <Clock size={28} />
               </div>
-              <h3 className="font-bold text-xl mb-3 text-slate-900">Smart Scheduling</h3>
-              <p className="text-slate-500 leading-relaxed">Visualize your daily classes with an intuitive calendar view designed specifically for academic schedules.</p>
+              <h3 className="font-bold text-xl mb-3 text-white">Smart Scheduling</h3>
+              <p className="text-slate-400 leading-relaxed">Visualize your daily classes with an intuitive calendar view designed specifically for academic schedules.</p>
             </div>
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all group">
-              <div className="w-14 h-14 bg-white text-violet-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+
+            {/* Sub feature 2 */}
+            <div className="md:col-span-3 lg:col-span-2 p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-violet-500/30 hover:bg-white/[0.07] transition-all group relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-500/20 rounded-full blur-[40px] group-hover:bg-violet-500/30 transition-colors"></div>
+              <div className="w-14 h-14 bg-violet-500/20 border border-violet-500/30 text-violet-400 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
                 <BookOpen size={28} />
               </div>
-              <h3 className="font-bold text-xl mb-3 text-slate-900">Lesson Planning</h3>
-              <p className="text-slate-500 leading-relaxed">Attach notes, resources, and links directly to your class slots. Keep everything organized and accessible.</p>
+              <h3 className="font-bold text-xl mb-3 text-white">Lesson Planning</h3>
+              <p className="text-slate-400 leading-relaxed">Attach notes, resources, and links directly to your class slots. Keep everything organized and accessible.</p>
             </div>
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all group">
-              <div className="w-14 h-14 bg-white text-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+
+            {/* Sub feature 3 */}
+            <div className="md:col-span-3 lg:col-span-2 p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-indigo-500/30 hover:bg-white/[0.07] transition-all group relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-[40px] group-hover:bg-indigo-500/30 transition-colors"></div>
+              <div className="w-14 h-14 bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
                 <Share2 size={28} />
               </div>
-              <h3 className="font-bold text-xl mb-3 text-slate-900">Easy Sharing</h3>
-              <p className="text-slate-500 leading-relaxed">Share your schedule or specific lesson resources with students or colleagues via a simple, secure link.</p>
+              <h3 className="font-bold text-xl mb-3 text-white">Easy Sharing</h3>
+              <p className="text-slate-400 leading-relaxed">Share your schedule or specific lesson resources with students or colleagues via a simple, secure link.</p>
             </div>
+
+            {/* Sub feature 4 - Wide bottom */}
+            <div className="md:col-span-3 lg:col-span-6 p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-fuchsia-500/30 hover:bg-white/[0.07] transition-all group flex flex-col md:flex-row items-start md:items-center gap-8 relative overflow-hidden">
+              <div className="absolute bottom-0 right-1/4 w-64 h-32 bg-fuchsia-500/10 rounded-full blur-[60px] group-hover:bg-fuchsia-500/20 transition-colors"></div>
+              <div className="w-14 h-14 bg-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-400 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
+                <Layers size={28} />
+              </div>
+              <div>
+                <h3 className="font-bold text-xl mb-2 text-white">Multiple Profiles</h3>
+                <p className="text-slate-400 leading-relaxed max-w-3xl">Manage different schedule profiles for different schools or semesters and switch between them seamlessly. Your entire teaching life organized under one hub.</p>
+              </div>
+            </div>
+
           </div>
         </main>
 
-        <footer className="py-8 text-center text-slate-400 text-sm border-t border-slate-100 bg-slate-50">
-          <p>© {new Date().getFullYear()} Lesson Hub. Built for teachers.</p>
+        <footer className="py-8 text-center text-slate-500 text-sm border-t border-white/10 bg-white/[0.02] backdrop-blur-md relative z-10 w-full mt-auto">
+          <p>© {new Date().getFullYear()} Lesson Hub. Built with ❤️ for teachers.</p>
         </footer>
       </div>
     );
@@ -597,13 +697,29 @@ function LessonArchiveContent() {
   return (
     <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden selection:bg-blue-200 selection:text-blue-900">
 
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        showProgress
+        hideCloseButton
+        callback={handleTourCallback}
+        styles={{
+          options: {
+            primaryColor: '#2563eb', // blue-600
+            zIndex: 1000,
+          },
+        }}
+      />
+
       {/* 1. TOP NAVIGATION */}
       <nav className="shrink-0 p-4 border-b border-slate-200 bg-white/80 backdrop-blur z-50 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
             <Layers size={20} />
           </div>
-          <div className="relative group">
+          <div className="relative group tour-step-profile">
             <button className="text-left flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div>
                 <h1 className="font-bold text-lg leading-tight text-slate-900">{currentProfile?.name || 'No Schedule'}</h1>
@@ -681,10 +797,21 @@ function LessonArchiveContent() {
                 alert(`Link copied: ${urlToCopy}`);
                 setIsSharing(false);
               }}
-              className={`p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors ${isSharing ? 'opacity-50 cursor-wait' : ''}`}
+              className={`p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors tour-step-share ${isSharing ? 'opacity-50 cursor-wait' : ''}`}
               title="Share Schedule"
             >
               {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
+            </button>
+          )}
+
+          {/* Tour Button */}
+          {user && (
+            <button
+              onClick={() => setRunTour(true)}
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+              title="Start Tour"
+            >
+              <HelpCircle size={20} />
             </button>
           )}
 
@@ -727,7 +854,7 @@ function LessonArchiveContent() {
 
         {/* 2. CALENDAR WIDGET (Left / Center) */}
         <div className={`transition-all duration-500 ease-in-out flex flex-col items-center p-6 overflow-y-auto bg-slate-50 ${isPanelOpen ? 'w-full md:w-1/3 justify-start pt-10' : 'w-full'}`}>
-          <div className={`bg-white border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all w-full ${isPanelOpen ? 'max-w-full' : 'max-w-lg my-auto'}`}>
+          <div className={`bg-white border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all w-full tour-step-calendar ${isPanelOpen ? 'max-w-full' : 'max-w-lg my-auto'}`}>
             <Calendar
               onChange={(v) => {
                 setDate(v as Date);
@@ -760,7 +887,7 @@ function LessonArchiveContent() {
         </div>
 
         {/* 3. CLASSES PANEL (Right) */}
-        <div className={`bg-white border-l border-slate-200 shadow-xl transition-all duration-500 ease-in-out flex flex-col overflow-hidden absolute inset-0 z-50 md:static ${isPanelOpen ? 'translate-x-0 opacity-100 md:w-2/3' : 'translate-x-full opacity-0 md:w-0 md:translate-x-0'}`}>
+        <div className={`bg-white border-l border-slate-200 shadow-xl transition-all duration-500 ease-in-out flex flex-col overflow-hidden absolute inset-0 z-50 md:static tour-step-schedule ${isPanelOpen ? 'translate-x-0 opacity-100 md:w-2/3' : 'translate-x-full opacity-0 md:w-0 md:translate-x-0'}`}>
           <div className="w-full h-full flex flex-col min-w-[320px]">
             {/* Panel Header */}
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white/90 backdrop-blur shrink-0">
