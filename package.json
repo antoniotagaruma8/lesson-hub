@@ -21,6 +21,10 @@
     "react-joyride": "^2.9.3",
     "tailwind-merge": "^3.4.0"
   },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
   "devDependencies": {
     "@types/react": "19.2.10",
     "autoprefixer": "^10.4.16",
