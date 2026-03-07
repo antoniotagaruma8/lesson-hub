@@ -936,7 +936,7 @@ function LessonArchiveContent() {
           <div className="w-full h-full flex flex-col min-w-[320px] relative">
 
 
-            <div className="flex-1 overflow-y-auto p-6 pt-20 z-10 relative">
+            <div className="flex-1 overflow-y-auto p-6 pt-6 z-10 relative">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
               <div className="mb-8 flex items-center justify-between relative z-10">
