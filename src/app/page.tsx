@@ -904,6 +904,7 @@ function LessonArchiveContent() {
                 setIsPanelOpen(true);
               }}
               value={date}
+              calendarType="iso8601"
               className="w-full bg-transparent border-none font-sans text-slate-200 relative z-10"
               tileClassName={({ date, view }) => {
                 const dKey = format(date, 'yyyy-MM-dd');
