@@ -149,7 +149,7 @@ function LessonArchiveContent() {
 
   // Tour State
   const [runTour, setRunTour] = useState(false);
-  const [tourSteps] = useState<Step[]>([
+  const [tourSteps, setTourSteps] = useState<Step[]>([
     {
       target: 'body',
       content: 'Welcome to Lesson Hub! Let us show you around your new teaching dashboard.',
@@ -162,20 +162,56 @@ function LessonArchiveContent() {
     },
     {
       target: '.tour-step-calendar',
-      content: 'Select any date on the calendar to view or edit the classes for that specific day.',
+      content: 'To get started and unlock your schedule, select any date on the calendar first!',
       placement: 'right',
-    },
-    {
-      target: '.tour-step-schedule',
-      content: 'This is your daily schedule. You can click on any class slot to add notes, links, or image resources.',
-      placement: 'left',
-    },
-    {
-      target: '.tour-step-share',
-      content: 'Need to share your schedule? Click here to generate a link to send to your students or colleagues.',
-      placement: 'bottom',
+      spotlightClicks: true,
     }
   ]);
+
+  // Dynamic Tour Steps based on panel state
+  useEffect(() => {
+    if (isPanelOpen) {
+      setTourSteps([
+        {
+          target: '.tour-step-schedule',
+          content: 'This is your daily schedule. You can click on any class slot to add notes, links, or image resources.',
+          placement: 'left',
+        },
+        {
+          target: '.tour-step-share',
+          content: 'Need to share your schedule? Click here to generate a link to send to your students or colleagues.',
+          placement: 'bottom',
+        }
+      ]);
+
+      // Auto-continue the tour if they just opened the panel and haven't finished yet
+      const hasSeenTour = localStorage.getItem('lesson_hub_has_seen_tour');
+      if (!hasSeenTour) {
+        setRunTour(true);
+      }
+    } else {
+      setTourSteps([
+        {
+          target: 'body',
+          content: 'Welcome to Lesson Hub! Let us show you around your new teaching dashboard.',
+          placement: 'center',
+        },
+        {
+          target: '.tour-step-profile',
+          content: 'Here you can select tracking profiles if you manage different schedules (like different schools or semesters).',
+          placement: 'bottom',
+        },
+        {
+          target: '.tour-step-calendar',
+          content: 'To get started and unlock your schedule, select any date on the calendar first!',
+          placement: 'right',
+          spotlightClicks: true,
+          disableBeacon: true
+        }
+      ]);
+    }
+  }, [isPanelOpen]);
+
 
   // Check if it's the user's first time logging in to auto-start the tour
   useEffect(() => {
@@ -188,11 +224,15 @@ function LessonArchiveContent() {
   }, [user, publicUserId]);
 
   const handleTourCallback = (data: any) => {
-    const { status } = data;
+    const { status, action, index } = data;
     const finishedStatuses: string[] = ['finished', 'skipped'];
+
     if (finishedStatuses.includes(status)) {
       setRunTour(false);
-      localStorage.setItem('lesson_hub_has_seen_tour', 'true');
+      // Only mark as completely seen if they finished the second half of the tour
+      if (isPanelOpen) {
+        localStorage.setItem('lesson_hub_has_seen_tour', 'true');
+      }
     }
   };
 
