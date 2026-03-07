@@ -904,6 +904,7 @@ function LessonArchiveContent() {
                 setIsPanelOpen(true);
               }}
               value={date}
+              locale="es-ES"
               calendarType="iso8601"
               className="w-full bg-transparent border-none font-sans text-slate-200 relative z-10"
               tileClassName={({ date, view }) => {
@@ -1524,9 +1525,10 @@ function LessonArchiveContent() {
         .react-calendar__month-view__weekdays { text-transform: uppercase; font-weight: 700; font-size: 0.7em; color: #64748b; }
         .react-calendar__month-view__weekdays__weekday { padding: 0.5em; text-align: center; }
         .react-calendar__month-view__weekdays__weekday abbr { text-decoration: none; }
+        .react-calendar__month-view__days { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; }
         .react-calendar__month-view__days__day--weekend { color: #f43f5e; }
         .react-calendar__month-view__days__day--neighboringMonth { color: #334155; }
-        .react-calendar__tile { max-width: 100%; padding: 0.5em 0.5em; background: none; text-align: center; line-height: 16px; border-radius: 50%; color: #94a3b8; transition: all 0.2s; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; margin: 2px!important; }
+        .react-calendar__tile { max-width: 100%; padding: 0.5em 0.5em; background: none; text-align: center; line-height: 16px; border-radius: 50%; color: #94a3b8; transition: all 0.2s; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; margin: 0 !important; }
         .react-calendar__tile:disabled { background-color: transparent; border-radius: 50%; }
         .react-calendar__tile:enabled:hover,
         .react-calendar__tile:enabled:focus { background-color: rgba(255,255,255,0.05); border-radius: 50%; color: white; }
