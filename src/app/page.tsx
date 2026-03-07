@@ -227,9 +227,10 @@ function LessonArchiveContent() {
         .eq('user_id', targetUserId);
 
       let loadedProfiles: ScheduleProfile[] = [];
+      const isUserAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
       // Only show hardcoded profiles if user is an admin
-      if (user?.email && ADMIN_EMAILS.includes(user.email)) {
+      if (isUserAdmin) {
         loadedProfiles = [...SCHEDULE_PROFILES];
       }
 
@@ -241,8 +242,13 @@ function LessonArchiveContent() {
           schedule: d.schedule
         }));
 
-        // Avoid duplicate IDs if admin already has them in DB
         dbProfiles.forEach(dbp => {
+          // If the profile is one of the pre-loaded admin schedules, hide it from non-admins
+          const isRestrictedAdminProfile = SCHEDULE_PROFILES.some(adminProf => adminProf.id === dbp.id);
+          if (!isUserAdmin && isRestrictedAdminProfile) {
+            return;
+          }
+
           if (!loadedProfiles.find(p => p.id === dbp.id)) {
             loadedProfiles.push(dbp);
           }
@@ -630,7 +636,6 @@ function LessonArchiveContent() {
                   }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                   disabled={!currentProfile}
-                >
                 >
                   <Pencil size={14} />
                   Edit Info
