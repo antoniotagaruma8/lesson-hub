@@ -936,7 +936,7 @@ function LessonArchiveContent() {
           <div className="w-full h-full flex flex-col min-w-[320px] relative">
             {/* Panel Header */}
             <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#13131a]/80 backdrop-blur shrink-0 z-10 absolute top-0 w-full">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Schedule</span>
+              <span></span>
               <button onClick={() => setIsPanelOpen(false)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
                 <X size={20} />
               </button>
