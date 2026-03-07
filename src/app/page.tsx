@@ -151,20 +151,11 @@ function LessonArchiveContent() {
   const [runTour, setRunTour] = useState(false);
   const [tourSteps, setTourSteps] = useState<Step[]>([
     {
-      target: 'body',
-      content: 'Welcome to Lesson Hub! Let us show you around your new teaching dashboard.',
-      placement: 'center',
-    },
-    {
-      target: '.tour-step-profile',
-      content: 'Here you can select tracking profiles if you manage different schedules (like different schools or semesters).',
-      placement: 'bottom',
-    },
-    {
       target: '.tour-step-calendar',
-      content: 'To get started and unlock your schedule, select any date on the calendar first!',
+      content: 'Welcome to Lesson Hub! First things first: please select a date on the calendar to open up your dashboard!',
       placement: 'right',
       spotlightClicks: true,
+      disableBeacon: true
     }
   ]);
 
@@ -173,8 +164,13 @@ function LessonArchiveContent() {
     if (isPanelOpen) {
       setTourSteps([
         {
+          target: '.tour-step-profile',
+          content: 'Let\'s set up your profile! Hover here and click "Add Schedule" to simply upload your PDF schedule, and our AI will automatically build it for you.',
+          placement: 'bottom',
+        },
+        {
           target: '.tour-step-schedule',
-          content: 'This is your daily schedule. You can click on any class slot to add notes, links, or image resources.',
+          content: 'This is your daily schedule view. You can click on any specific class slot to attach notes, important links, or image resources for that lesson.',
           placement: 'left',
         },
         {
@@ -192,18 +188,8 @@ function LessonArchiveContent() {
     } else {
       setTourSteps([
         {
-          target: 'body',
-          content: 'Welcome to Lesson Hub! Let us show you around your new teaching dashboard.',
-          placement: 'center',
-        },
-        {
-          target: '.tour-step-profile',
-          content: 'Here you can select tracking profiles if you manage different schedules (like different schools or semesters).',
-          placement: 'bottom',
-        },
-        {
           target: '.tour-step-calendar',
-          content: 'To get started and unlock your schedule, select any date on the calendar first!',
+          content: 'Welcome to Lesson Hub! First things first: please select a date on the calendar to open up your dashboard!',
           placement: 'right',
           spotlightClicks: true,
           disableBeacon: true
