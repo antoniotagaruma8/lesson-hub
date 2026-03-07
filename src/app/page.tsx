@@ -934,13 +934,7 @@ function LessonArchiveContent() {
         {/* 3. CLASSES PANEL (Right) */}
         <div className={`bg-[#0a0a0e]/80 backdrop-blur-2xl border-l border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out flex flex-col overflow-hidden absolute inset-0 z-50 md:static tour-step-schedule ${isPanelOpen ? 'translate-x-0 opacity-100 md:w-2/3' : 'translate-x-full opacity-0 md:w-0 md:translate-x-0'}`}>
           <div className="w-full h-full flex flex-col min-w-[320px] relative">
-            {/* Panel Header */}
-            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#13131a]/80 backdrop-blur shrink-0 z-10 absolute top-0 w-full">
-              <span></span>
-              <button onClick={() => setIsPanelOpen(false)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
-            </div>
+
 
             <div className="flex-1 overflow-y-auto p-6 pt-20 z-10 relative">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
