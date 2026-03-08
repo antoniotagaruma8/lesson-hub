@@ -187,8 +187,13 @@ function LessonArchiveContent() {
           placement: 'bottom'
         },
         {
+          target: '.tour-step-favorites',
+          content: '3️⃣ This is your Favorite Links bar! Click "Add" (in Admin Mode) to save quick links that you always need access to.',
+          placement: 'bottom'
+        },
+        {
           target: '.tour-step-schedule',
-          content: '3️⃣ This is where your classes live. Click on any class to add notes, links, or image resources.',
+          content: '4️⃣ This is where your classes live. Click on any class to add notes, links, or image resources.',
           placement: 'left'
         },
         {
@@ -913,7 +918,7 @@ function LessonArchiveContent() {
 
       {/* FAVORITE LINKS BAR */}
       {(favoriteLinks.length > 0 || (isAdmin && isOwner)) && (
-        <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex items-center gap-3 overflow-x-auto relative">
+        <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex items-center gap-3 overflow-x-auto relative tour-step-favorites">
           <div className="flex items-center gap-1.5 text-yellow-400/80 shrink-0">
             <Star size={14} fill="currentColor" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">My Links</span>
