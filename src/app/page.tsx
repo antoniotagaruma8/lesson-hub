@@ -6,7 +6,7 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import {
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, HelpCircle
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, HelpCircle, Star, Globe
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -51,6 +51,12 @@ interface LessonEntry {
 interface LinkItem {
   url: string;
   title: string;
+}
+
+interface FavoriteLink {
+  id: string;
+  title: string;
+  url: string;
 }
 
 interface ScheduleProfile {
@@ -146,6 +152,11 @@ function LessonArchiveContent() {
   const [newScheduleSubtitle, setNewScheduleSubtitle] = useState("");
   const [editingSlot, setEditingSlot] = useState<{ dayIndex: number, slotIndex: number, slot: ScheduleSlot } | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  // Favorite Links State
+  const [favoriteLinks, setFavoriteLinks] = useState<FavoriteLink[]>([]);
+  const [editingFavorite, setEditingFavorite] = useState<FavoriteLink | null>(null);
+  const [isFavModalOpen, setIsFavModalOpen] = useState(false);
 
   // Tour State
   const [runTour, setRunTour] = useState(false);
@@ -298,6 +309,36 @@ function LessonArchiveContent() {
   useEffect(() => {
     if (!isOwner) setIsAdmin(false);
   }, [isOwner]);
+
+  // Load Favorite Links from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lesson_hub_favorite_links');
+      if (saved) setFavoriteLinks(JSON.parse(saved));
+    } catch { }
+  }, []);
+
+  // Save Favorite Links to localStorage
+  const saveFavoriteLinks = (links: FavoriteLink[]) => {
+    setFavoriteLinks(links);
+    localStorage.setItem('lesson_hub_favorite_links', JSON.stringify(links));
+  };
+
+  const handleSaveFavorite = () => {
+    if (!editingFavorite || !editingFavorite.title.trim() || !editingFavorite.url.trim()) return;
+    const existing = favoriteLinks.find(l => l.id === editingFavorite.id);
+    if (existing) {
+      saveFavoriteLinks(favoriteLinks.map(l => l.id === editingFavorite.id ? editingFavorite : l));
+    } else {
+      saveFavoriteLinks([...favoriteLinks, editingFavorite]);
+    }
+    setEditingFavorite(null);
+    setIsFavModalOpen(false);
+  };
+
+  const handleDeleteFavorite = (id: string) => {
+    saveFavoriteLinks(favoriteLinks.filter(l => l.id !== id));
+  };
 
   // Load Schedules from DB
   useEffect(() => {
@@ -891,6 +932,111 @@ function LessonArchiveContent() {
           )}
         </div>
       </nav>
+
+      {/* FAVORITE LINKS BAR */}
+      {(favoriteLinks.length > 0 || (isAdmin && isOwner)) && (
+        <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex items-center gap-3 overflow-x-auto relative">
+          <div className="flex items-center gap-1.5 text-yellow-400/80 shrink-0">
+            <Star size={14} fill="currentColor" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">My Links</span>
+          </div>
+          <div className="h-4 w-px bg-white/10 shrink-0"></div>
+          <div className="flex items-center gap-2 overflow-x-auto flex-1">
+            {favoriteLinks.map(link => (
+              <div key={link.id} className="group relative shrink-0">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-blue-500/10 text-xs font-medium text-slate-300 hover:text-white transition-all"
+                >
+                  <Globe size={12} className="text-blue-400" />
+                  {link.title}
+                </a>
+                {isAdmin && isOwner && (
+                  <div className="absolute -top-1 -right-1 hidden group-hover:flex items-center gap-0.5 z-10">
+                    <button
+                      onClick={(e) => { e.preventDefault(); setEditingFavorite(link); setIsFavModalOpen(true); }}
+                      className="p-1 bg-[#13131a] border border-white/20 rounded-full text-slate-400 hover:text-blue-400 transition-colors shadow-lg"
+                    >
+                      <Pencil size={10} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleDeleteFavorite(link.id); }}
+                      className="p-1 bg-[#13131a] border border-white/20 rounded-full text-slate-400 hover:text-red-400 transition-colors shadow-lg"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {isAdmin && isOwner && (
+            <button
+              onClick={() => { setEditingFavorite({ id: `fav_${Date.now()}`, title: '', url: '' }); setIsFavModalOpen(true); }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold hover:bg-yellow-500/20 hover:border-yellow-500/40 transition-all"
+            >
+              <Plus size={12} />
+              Add
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Favorite Link Modal */}
+      {isFavModalOpen && editingFavorite && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#13131a] border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 text-slate-200">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <h3 className="font-bold text-white flex items-center gap-2">
+                <Star size={16} className="text-yellow-400" />
+                {favoriteLinks.find(l => l.id === editingFavorite.id) ? 'Edit Link' : 'Add Favorite Link'}
+              </h3>
+              <button onClick={() => { setIsFavModalOpen(false); setEditingFavorite(null); }} className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Title</label>
+                <input
+                  className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-yellow-500/50 focus:bg-white/5 transition-all text-white placeholder-slate-600"
+                  placeholder="e.g. Google Classroom"
+                  value={editingFavorite.title}
+                  onChange={(e) => setEditingFavorite({ ...editingFavorite, title: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5 tracking-wider">URL</label>
+                <input
+                  className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-yellow-500/50 focus:bg-white/5 transition-all text-white placeholder-slate-600 font-mono"
+                  placeholder="https://..."
+                  value={editingFavorite.url}
+                  onChange={(e) => setEditingFavorite({ ...editingFavorite, url: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setIsFavModalOpen(false); setEditingFavorite(null); }}
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm font-bold hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveFavorite}
+                  disabled={!editingFavorite.title.trim() || !editingFavorite.url.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-sm font-bold hover:bg-yellow-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Save size={14} />
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden relative z-10">
 
