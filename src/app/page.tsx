@@ -317,16 +317,27 @@ function LessonArchiveContent() {
 
   // Load Favorite Links from localStorage
   useEffect(() => {
+    if (!user) {
+      setFavoriteLinks([]);
+      return;
+    }
     try {
-      const saved = localStorage.getItem('lesson_hub_favorite_links');
-      if (saved) setFavoriteLinks(JSON.parse(saved));
+      const storageKey = `lesson_hub_favorite_links_${user.id}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setFavoriteLinks(JSON.parse(saved));
+      } else {
+        setFavoriteLinks([]);
+      }
     } catch { }
-  }, []);
+  }, [user]);
 
   // Save Favorite Links to localStorage
   const saveFavoriteLinks = (links: FavoriteLink[]) => {
+    if (!user) return;
     setFavoriteLinks(links);
-    localStorage.setItem('lesson_hub_favorite_links', JSON.stringify(links));
+    const storageKey = `lesson_hub_favorite_links_${user.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(links));
   };
 
   const handleSaveFavorite = () => {
@@ -917,7 +928,7 @@ function LessonArchiveContent() {
       </nav>
 
       {/* FAVORITE LINKS BAR */}
-      {(favoriteLinks.length > 0 || (isAdmin && isOwner)) && (
+      {isOwner && (favoriteLinks.length > 0 || isAdmin) && (
         <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex items-center gap-3 overflow-x-auto relative tour-step-favorites">
           <div className="flex items-center gap-1.5 text-yellow-400/80 shrink-0">
             <Star size={14} fill="currentColor" />
