@@ -281,15 +281,26 @@ function LessonArchiveContent() {
   const isOwner = user && targetUserId === user.id;
 
   // Init: Check URL params & Auth Session
+  // Init: Check URL params & Auth Session
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        setIsPanelOpen(true);
+      }
       if (!session?.user) setIsAdmin(false);
       setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Open panel automatically for guest views
+  useEffect(() => {
+    if (publicUserId) {
+      setIsPanelOpen(true);
+    }
+  }, [publicUserId]);
 
   const handleLogin = async () => {
     // Ensure this URL is allowed in Supabase Dashboard > Authentication > URL Configuration
