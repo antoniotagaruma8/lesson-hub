@@ -348,42 +348,63 @@ function LessonArchiveContent() {
     fetchFavorites();
   }, [user]);
 
-  // Sync Favorite Links to Supabase
-  const saveFavoriteLinksToDb = async (links: FavoriteLink[]) => {
+  // Re-fetch favorites from DB to keep state in sync
+  const refetchFavorites = async () => {
     if (!user) return;
     try {
-      // Delete all existing, then re-insert
-      await supabase.from('favorite_links').delete().eq('user_id', user.id);
-      if (links.length > 0) {
-        const { error } = await supabase.from('favorite_links').insert(
-          links.map(l => ({ id: l.id, user_id: user.id, title: l.title, url: l.url }))
-        );
-        if (error) throw error;
-      }
+      const { data, error } = await supabase
+        .from('favorite_links')
+        .select('id, title, url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      if (data) setFavoriteLinks(data);
     } catch (err) {
-      console.error("Error saving favorite links:", err);
+      console.error("Error re-fetching favorite links:", err);
     }
   };
 
-  const handleSaveFavorite = () => {
-    if (!editingFavorite || !editingFavorite.title.trim() || !editingFavorite.url.trim()) return;
-    const existing = favoriteLinks.find(l => l.id === editingFavorite.id);
-    let updatedLinks: FavoriteLink[];
-    if (existing) {
-      updatedLinks = favoriteLinks.map(l => l.id === editingFavorite.id ? editingFavorite : l);
-    } else {
-      updatedLinks = [...favoriteLinks, editingFavorite];
+  const handleSaveFavorite = async () => {
+    if (!editingFavorite || !editingFavorite.title.trim() || !editingFavorite.url.trim() || !user) return;
+    const isExisting = favoriteLinks.find(l => l.id === editingFavorite.id);
+    try {
+      if (isExisting) {
+        // Update existing link
+        const { error } = await supabase.from('favorite_links').update({
+          title: editingFavorite.title,
+          url: editingFavorite.url
+        }).eq('id', editingFavorite.id).eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        // Insert new link with client-generated TEXT id
+        const { error } = await supabase.from('favorite_links').insert({
+          id: `fav_${Date.now()}`,
+          user_id: user.id,
+          title: editingFavorite.title,
+          url: editingFavorite.url
+        });
+        if (error) throw error;
+      }
+      await refetchFavorites();
+    } catch (err) {
+      console.error("Error saving favorite link:", err);
     }
-    setFavoriteLinks(updatedLinks);
-    saveFavoriteLinksToDb(updatedLinks);
     setEditingFavorite(null);
     setIsFavModalOpen(false);
   };
 
-  const handleDeleteFavorite = (id: string) => {
-    const updatedLinks = favoriteLinks.filter(l => l.id !== id);
-    setFavoriteLinks(updatedLinks);
-    saveFavoriteLinksToDb(updatedLinks);
+  const handleDeleteFavorite = async (id: string) => {
+    if (!user) return;
+    // Optimistic UI update
+    setFavoriteLinks(prev => prev.filter(l => l.id !== id));
+    try {
+      const { error } = await supabase.from('favorite_links').delete().eq('id', id).eq('user_id', user.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error deleting favorite link:", err);
+      // Re-fetch to restore correct state on error
+      await refetchFavorites();
+    }
   };
 
   // Load Schedules from DB
@@ -998,7 +1019,7 @@ function LessonArchiveContent() {
           </div>
           {isAdmin && isOwner && (
             <button
-              onClick={() => { setEditingFavorite({ id: `fav_${Date.now()}`, title: '', url: '' }); setIsFavModalOpen(true); }}
+              onClick={() => { setEditingFavorite({ id: '', title: '', url: '' }); setIsFavModalOpen(true); }}
               className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold hover:bg-yellow-500/20 hover:border-yellow-500/40 transition-all"
             >
               <Plus size={12} />
