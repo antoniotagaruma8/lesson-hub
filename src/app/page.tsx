@@ -326,45 +326,64 @@ function LessonArchiveContent() {
     if (!isOwner) setIsAdmin(false);
   }, [isOwner]);
 
-  // Load Favorite Links from localStorage
+  // Load Favorite Links from Supabase
   useEffect(() => {
     if (!user) {
       setFavoriteLinks([]);
       return;
     }
-    try {
-      const storageKey = `lesson_hub_favorite_links_${user.id}`;
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        setFavoriteLinks(JSON.parse(saved));
-      } else {
-        setFavoriteLinks([]);
+    const fetchFavorites = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('favorite_links')
+          .select('id, title, url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        if (data) setFavoriteLinks(data);
+      } catch (err) {
+        console.error("Error loading favorite links:", err);
       }
-    } catch { }
+    };
+    fetchFavorites();
   }, [user]);
 
-  // Save Favorite Links to localStorage
-  const saveFavoriteLinks = (links: FavoriteLink[]) => {
+  // Sync Favorite Links to Supabase
+  const saveFavoriteLinksToDb = async (links: FavoriteLink[]) => {
     if (!user) return;
-    setFavoriteLinks(links);
-    const storageKey = `lesson_hub_favorite_links_${user.id}`;
-    localStorage.setItem(storageKey, JSON.stringify(links));
+    try {
+      // Delete all existing, then re-insert
+      await supabase.from('favorite_links').delete().eq('user_id', user.id);
+      if (links.length > 0) {
+        const { error } = await supabase.from('favorite_links').insert(
+          links.map(l => ({ id: l.id, user_id: user.id, title: l.title, url: l.url }))
+        );
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Error saving favorite links:", err);
+    }
   };
 
   const handleSaveFavorite = () => {
     if (!editingFavorite || !editingFavorite.title.trim() || !editingFavorite.url.trim()) return;
     const existing = favoriteLinks.find(l => l.id === editingFavorite.id);
+    let updatedLinks: FavoriteLink[];
     if (existing) {
-      saveFavoriteLinks(favoriteLinks.map(l => l.id === editingFavorite.id ? editingFavorite : l));
+      updatedLinks = favoriteLinks.map(l => l.id === editingFavorite.id ? editingFavorite : l);
     } else {
-      saveFavoriteLinks([...favoriteLinks, editingFavorite]);
+      updatedLinks = [...favoriteLinks, editingFavorite];
     }
+    setFavoriteLinks(updatedLinks);
+    saveFavoriteLinksToDb(updatedLinks);
     setEditingFavorite(null);
     setIsFavModalOpen(false);
   };
 
   const handleDeleteFavorite = (id: string) => {
-    saveFavoriteLinks(favoriteLinks.filter(l => l.id !== id));
+    const updatedLinks = favoriteLinks.filter(l => l.id !== id);
+    setFavoriteLinks(updatedLinks);
+    saveFavoriteLinksToDb(updatedLinks);
   };
 
   // Load Schedules from DB
