@@ -959,13 +959,13 @@ function LessonArchiveContent() {
 
       {/* FAVORITE LINKS BAR */}
       {isOwner && (favoriteLinks.length > 0 || isAdmin) && (
-        <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex items-center gap-3 overflow-x-auto relative tour-step-favorites">
+        <div className="shrink-0 px-4 py-2.5 border-b border-white/10 bg-[#0a0a0e]/60 backdrop-blur-md z-40 flex flex-wrap items-center gap-3 relative tour-step-favorites">
           <div className="flex items-center gap-1.5 text-yellow-400/80 shrink-0">
             <Star size={14} fill="currentColor" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">My Links</span>
           </div>
           <div className="h-4 w-px bg-white/10 shrink-0"></div>
-          <div className="flex items-center gap-2 overflow-x-auto flex-1">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
             {favoriteLinks.map(link => (
               <div key={link.id} className="group relative shrink-0">
                 <a
