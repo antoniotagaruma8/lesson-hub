@@ -6,7 +6,8 @@ import Calendar from "react-calendar";
 import { createClient } from "@supabase/supabase-js";
 import {
   ExternalLink, Lock, Unlock, ChevronDown, ChevronUp, Pencil,
-  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, HelpCircle, Star, Globe
+  Image as ImageIcon, Loader2, BookOpen, Coffee, X, Plus, Trash2, Layers, Upload, Sparkles, LogIn, LogOut, Share2, Save, Clock, ArrowRight, HelpCircle, Star, Globe,
+  CalendarPlus, Copy, MoveRight, CalendarCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import "react-calendar/dist/Calendar.css";
@@ -160,6 +161,12 @@ function LessonArchiveContent() {
 
   // Tour State
   const [runTour, setRunTour] = useState(false);
+
+  // Reschedule / Copy state
+  const [isDatePickerModalOpen, setIsDatePickerModalOpen] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'copy' | 'reschedule'>('copy');
+  const [targetDate, setTargetDate] = useState<Date>(new Date());
+  const [isCopying, setIsCopying] = useState(false);
 
   // We define all steps here
   const [tourSteps, setTourSteps] = useState<Step[]>([
@@ -562,6 +569,87 @@ function LessonArchiveContent() {
       console.error("Error deleting lesson:", err);
       alert("Failed to delete lesson");
     }
+  };
+
+  // Copy all lesson entries from current date to a target date
+  const handleCopyToDate = async (target: Date) => {
+    if (!user || !isOwner) return;
+    setIsCopying(true);
+    const targetKey = format(target, 'yyyy-MM-dd');
+    try {
+      // Fetch all entries for current date
+      const { data: sourceEntries, error: fetchError } = await supabase
+        .from('lesson_plan')
+        .select('*')
+        .eq('date', dateKey)
+        .eq('user_id', user.id);
+      if (fetchError) throw fetchError;
+      if (!sourceEntries || sourceEntries.length === 0) {
+        alert('No lesson data to copy from this date.');
+        setIsCopying(false);
+        return;
+      }
+      // Upsert each entry with the new target date
+      for (const entry of sourceEntries) {
+        const { id, ...rest } = entry;
+        const { error: upsertError } = await supabase.from('lesson_plan').upsert({
+          ...rest,
+          date: targetKey,
+        }, { onConflict: 'user_id, date, slot_id' });
+        if (upsertError) throw upsertError;
+      }
+      alert(`Lesson data copied to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+    } catch (err) {
+      console.error('Error copying lessons:', err);
+      alert('Failed to copy lesson data.');
+    }
+    setIsCopying(false);
+    setIsDatePickerModalOpen(false);
+  };
+
+  // Reschedule: copy to target date, then delete from current date
+  const handleRescheduleToDate = async (target: Date) => {
+    if (!user || !isOwner) return;
+    setIsCopying(true);
+    const targetKey = format(target, 'yyyy-MM-dd');
+    try {
+      // Fetch all entries for current date
+      const { data: sourceEntries, error: fetchError } = await supabase
+        .from('lesson_plan')
+        .select('*')
+        .eq('date', dateKey)
+        .eq('user_id', user.id);
+      if (fetchError) throw fetchError;
+      if (!sourceEntries || sourceEntries.length === 0) {
+        alert('No lesson data to reschedule from this date.');
+        setIsCopying(false);
+        return;
+      }
+      // Copy entries to new date
+      for (const entry of sourceEntries) {
+        const { id, ...rest } = entry;
+        const { error: upsertError } = await supabase.from('lesson_plan').upsert({
+          ...rest,
+          date: targetKey,
+        }, { onConflict: 'user_id, date, slot_id' });
+        if (upsertError) throw upsertError;
+      }
+      // Delete entries from current date
+      const { error: deleteError } = await supabase
+        .from('lesson_plan')
+        .delete()
+        .eq('date', dateKey)
+        .eq('user_id', user.id);
+      if (deleteError) throw deleteError;
+      // Clear local entries
+      setEntries({});
+      alert(`Lesson data moved to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+    } catch (err) {
+      console.error('Error rescheduling lessons:', err);
+      alert('Failed to reschedule lesson data.');
+    }
+    setIsCopying(false);
+    setIsDatePickerModalOpen(false);
   };
 
   // Upload Image
@@ -1083,6 +1171,89 @@ function LessonArchiveContent() {
         </div>
       )}
 
+      {/* Date Picker Modal for Copy / Reschedule */}
+      {isDatePickerModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#13131a] border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 text-slate-200">
+            <div className={`p-4 border-b border-white/10 flex justify-between items-center ${datePickerMode === 'copy' ? 'bg-blue-500/10' : 'bg-violet-500/10'}`}>
+              <h3 className="font-bold text-white flex items-center gap-2">
+                {datePickerMode === 'copy' ? (
+                  <><Copy size={16} className="text-blue-400" /> Copy Lessons to Date</>
+                ) : (
+                  <><MoveRight size={16} className="text-violet-400" /> Reschedule Lessons</>
+                )}
+              </h3>
+              <button onClick={() => setIsDatePickerModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-xs text-slate-400 mb-2">
+                {datePickerMode === 'copy'
+                  ? <>Copying lesson data from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span> to:</>
+                  : <>Moving lesson data from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span> to:</>
+                }
+              </div>
+              <div className="bg-[#0a0a0e] border border-white/10 rounded-xl p-3 date-picker-modal-cal">
+                <Calendar
+                  onChange={(v) => setTargetDate(v as Date)}
+                  value={targetDate}
+                  locale="es-ES"
+                  calendarType="iso8601"
+                  className="w-full bg-transparent border-none font-sans text-slate-200"
+                />
+              </div>
+              {targetDate && (
+                <div className="text-sm text-center text-slate-300">
+                  Selected: <span className="font-bold text-white">{targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                </div>
+              )}
+              {format(targetDate, 'yyyy-MM-dd') === dateKey && (
+                <div className="text-xs text-center text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg border border-yellow-500/20">
+                  ⚠️ Target date is the same as the current date. Please choose a different date.
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setIsDatePickerModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm font-bold hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (format(targetDate, 'yyyy-MM-dd') === dateKey) {
+                      alert('Please choose a different date.');
+                      return;
+                    }
+                    if (datePickerMode === 'reschedule') {
+                      if (!confirm(`Are you sure you want to MOVE all lesson data to ${targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}? Data on the current date will be removed.`)) return;
+                      handleRescheduleToDate(targetDate);
+                    } else {
+                      handleCopyToDate(targetDate);
+                    }
+                  }}
+                  disabled={isCopying || format(targetDate, 'yyyy-MM-dd') === dateKey}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                    datePickerMode === 'copy'
+                      ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30'
+                      : 'bg-violet-500/20 border border-violet-500/30 text-violet-400 hover:bg-violet-500/30'
+                  }`}
+                >
+                  {isCopying ? (
+                    <><Loader2 size={14} className="animate-spin" /> Processing...</>
+                  ) : datePickerMode === 'copy' ? (
+                    <><Copy size={14} /> Copy</>
+                  ) : (
+                    <><MoveRight size={14} /> Move</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative z-10">
 
         {/* 2. CALENDAR WIDGET (Left / Center) */}
@@ -1130,20 +1301,41 @@ function LessonArchiveContent() {
             <div className="flex-1 overflow-y-auto p-6 pt-6 z-10 relative">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-              <div className="mb-8 flex items-center justify-between relative z-10">
-                <div>
-                  <h2 className="text-3xl font-bold text-white tracking-tight mb-1">
-                    {date.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, c => c.toUpperCase())}, {date.getDate()} de {date.toLocaleDateString('es-ES', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())}
-                  </h2>
-                  {holidayName ? (
-                    <span className="inline-block mt-2 px-3 py-1 rounded text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 shadow-sm">
-                      🇪🇸 HOLIDAY: {holidayName}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 text-sm font-medium">Classes for today</span>
-                  )}
+              <div className="mb-8 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-bold text-white tracking-tight mb-1">
+                      {date.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, c => c.toUpperCase())}, {date.getDate()} de {date.toLocaleDateString('es-ES', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())}
+                    </h2>
+                    {holidayName ? (
+                      <span className="inline-block mt-2 px-3 py-1 rounded text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 shadow-sm">
+                        🇪🇸 HOLIDAY: {holidayName}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-sm font-medium">Classes for today</span>
+                    )}
+                  </div>
+                  {loading && <Loader2 className="animate-spin text-blue-500" />}
                 </div>
-                {loading && <Loader2 className="animate-spin text-blue-500" />}
+                {/* Reschedule & Copy Buttons */}
+                {isAdmin && Object.keys(entries).length > 0 && (
+                  <div className="flex items-center gap-2 mt-4">
+                    <button
+                      onClick={() => { setDatePickerMode('copy'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                    >
+                      <Copy size={14} />
+                      Copy to Date
+                    </button>
+                    <button
+                      onClick={() => { setDatePickerMode('reschedule'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-2 rounded-lg transition-all border border-violet-500/20 hover:border-violet-500/40"
+                    >
+                      <MoveRight size={14} />
+                      Reschedule
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4 relative z-10">
