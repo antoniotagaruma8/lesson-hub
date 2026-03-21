@@ -1318,7 +1318,7 @@ function LessonArchiveContent() {
                   {loading && <Loader2 className="animate-spin text-blue-500" />}
                 </div>
                 {/* Reschedule & Copy Buttons */}
-                {isAdmin && Object.keys(entries).length > 0 && (
+                {isAdmin && schedule.length > 0 && (
                   <div className="flex items-center gap-2 mt-4">
                     <button
                       onClick={() => { setDatePickerMode('copy'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
