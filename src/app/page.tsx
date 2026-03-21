@@ -1083,10 +1083,10 @@ function LessonArchiveContent() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative z-10">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative z-10">
 
         {/* 2. CALENDAR WIDGET (Left / Center) */}
-        <div className={`transition-all duration-500 ease-in-out flex flex-col items-center p-4 md:p-6 overflow-y-auto shrink-0 ${isPanelOpen ? 'w-full md:w-1/3 justify-start md:pt-10' : 'w-full flex-1'}`}>
+        <div className={`transition-all duration-500 ease-in-out flex flex-col items-center p-4 md:p-6 md:overflow-y-auto ${isPanelOpen ? 'w-full md:w-1/3 justify-start md:pt-10' : 'w-full flex-1'}`}>
           <div className={`bg-[#13131a]/80 backdrop-blur-xl border border-white/10 p-4 md:p-8 rounded-3xl shadow-2xl transition-all w-full tour-step-calendar relative overflow-hidden ${isPanelOpen ? 'max-w-full' : 'max-w-lg my-auto'}`}>
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
             <Calendar
@@ -1123,7 +1123,7 @@ function LessonArchiveContent() {
         </div>
 
         {/* 3. CLASSES PANEL (Right) */}
-        <div className={`bg-[#0a0a0e]/80 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out flex flex-col overflow-hidden tour-step-schedule ${isPanelOpen ? 'flex-1 opacity-100 md:w-2/3' : 'h-0 md:w-0 opacity-0 overflow-hidden'}`}>
+        <div className={`bg-[#0a0a0e]/80 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out flex flex-col overflow-hidden tour-step-schedule ${isPanelOpen ? 'min-h-[60vh] md:min-h-0 flex-1 opacity-100 md:w-2/3' : 'h-0 md:w-0 opacity-0 overflow-hidden'}`}>
           <div className="w-full h-full flex flex-col md:min-w-[320px] relative">
 
 
