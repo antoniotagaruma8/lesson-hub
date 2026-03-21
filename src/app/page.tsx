@@ -165,6 +165,7 @@ function LessonArchiveContent() {
   const [isDatePickerModalOpen, setIsDatePickerModalOpen] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<'copy' | 'reschedule'>('copy');
   const [targetDate, setTargetDate] = useState<Date>(new Date());
+  const [targetSlotId, setTargetSlotId] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
   const [selectedSlotForAction, setSelectedSlotForAction] = useState<{ id: string, subject: string } | null>(null);
 
@@ -572,7 +573,7 @@ function LessonArchiveContent() {
   };
 
   // Copy all lesson entries from current date to a target date
-  const handleCopyToDate = async (target: Date) => {
+  const handleCopyToDate = async (target: Date, destSlotId: string) => {
     if (!user || !isOwner || !selectedSlotForAction) return;
     setIsCopying(true);
     const targetKey = format(target, 'yyyy-MM-dd');
@@ -593,13 +594,15 @@ function LessonArchiveContent() {
       
       const entry = sourceEntries[0];
       const { id, ...rest } = entry;
+      // Use destSlotId for the new entry, so it goes to the user's chosen target subject
       const { error: upsertError } = await supabase.from('lesson_plan').upsert({
         ...rest,
         date: targetKey,
+        slot_id: destSlotId,
       }, { onConflict: 'user_id, date, slot_id' });
       if (upsertError) throw upsertError;
 
-      alert(`Lesson data for ${selectedSlotForAction.subject} copied to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+      alert(`Lesson data for ${selectedSlotForAction.subject} copied successfully!`);
     } catch (err) {
       console.error('Error copying lessons:', err);
       alert('Failed to copy lesson data.');
@@ -607,10 +610,11 @@ function LessonArchiveContent() {
     setIsCopying(false);
     setIsDatePickerModalOpen(false);
     setSelectedSlotForAction(null);
+    setTargetSlotId('');
   };
 
   // Reschedule: copy to target date, then delete from current date
-  const handleRescheduleToDate = async (target: Date) => {
+  const handleRescheduleToDate = async (target: Date, destSlotId: string) => {
     if (!user || !isOwner || !selectedSlotForAction) return;
     setIsCopying(true);
     const targetKey = format(target, 'yyyy-MM-dd');
@@ -634,6 +638,7 @@ function LessonArchiveContent() {
       const { error: upsertError } = await supabase.from('lesson_plan').upsert({
         ...rest,
         date: targetKey,
+        slot_id: destSlotId,
       }, { onConflict: 'user_id, date, slot_id' });
       if (upsertError) throw upsertError;
 
@@ -653,7 +658,7 @@ function LessonArchiveContent() {
         return newEntries;
       });
 
-      alert(`Lesson data for ${selectedSlotForAction.subject} moved to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+      alert(`Lesson data for ${selectedSlotForAction.subject} rescheduled successfully!`);
     } catch (err) {
       console.error('Error rescheduling lessons:', err);
       alert('Failed to reschedule lesson data.');
@@ -661,6 +666,7 @@ function LessonArchiveContent() {
     setIsCopying(false);
     setIsDatePickerModalOpen(false);
     setSelectedSlotForAction(null);
+    setTargetSlotId('');
   };
 
   // Upload Image
@@ -1198,53 +1204,91 @@ function LessonArchiveContent() {
                 <X size={18} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="text-xs text-slate-400 mb-2">
-                {datePickerMode === 'copy'
-                  ? <>Copying lesson data for <span className="text-blue-300 font-bold">{selectedSlotForAction?.subject}</span> from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span> to:</>
-                  : <>Moving lesson data for <span className="text-violet-300 font-bold">{selectedSlotForAction?.subject}</span> from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span> to:</>
+            <div className="p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+              <div>
+                <div className="text-xs text-slate-400 mb-2 font-medium">
+                  Step 1: Select Target Date
+                </div>
+                <div className="bg-[#0a0a0e] border border-white/10 rounded-xl p-3 date-picker-modal-cal">
+                  <Calendar
+                    onChange={(v) => {
+                      setTargetDate(v as Date);
+                      setTargetSlotId(''); // Reset slot selection when date changes
+                    }}
+                    value={targetDate}
+                    locale="es-ES"
+                    calendarType="iso8601"
+                    className="w-full bg-transparent border-none font-sans text-slate-200"
+                  />
+                </div>
+              </div>
+              
+              {targetDate && (() => {
+                // Determine target date's schedule profile
+                const tDateKey = format(targetDate, 'yyyy-MM-dd');
+                const tDayIndex = (targetDate.getDay() + 6) % 7;
+                const specificProfile = profiles.find((p: ScheduleProfile) => p.specific_date === tDateKey);
+                const isHoliday = HOLIDAYS[tDateKey];
+                
+                let targetSchedule: ScheduleSlot[] = [];
+                if (!isHoliday) {
+                  const defaultProfile = profiles.find((p: ScheduleProfile) => !p.specific_date && p.day_index === tDayIndex);
+                  targetSchedule = specificProfile ? specificProfile.slots : (defaultProfile ? defaultProfile.slots : MAIN_SCHEDULE.days[tDayIndex]);
                 }
-              </div>
-              <div className="bg-[#0a0a0e] border border-white/10 rounded-xl p-3 date-picker-modal-cal">
-                <Calendar
-                  onChange={(v) => setTargetDate(v as Date)}
-                  value={targetDate}
-                  locale="es-ES"
-                  calendarType="iso8601"
-                  className="w-full bg-transparent border-none font-sans text-slate-200"
-                />
-              </div>
-              {targetDate && (
-                <div className="text-sm text-center text-slate-300">
-                  Selected: <span className="font-bold text-white">{targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                </div>
-              )}
-              {format(targetDate, 'yyyy-MM-dd') === dateKey && (
-                <div className="text-xs text-center text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg border border-yellow-500/20">
-                  ⚠️ Target date is the same as the current date. Please choose a different date.
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
+                const availableClasses = targetSchedule.filter(s => !s.isBreak);
+
+                return (
+                  <div className="space-y-2">
+                    <div className="text-xs text-slate-400 font-medium">
+                      Step 2: Select Target Subject
+                    </div>
+                    {isHoliday ? (
+                      <div className="text-sm p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg">
+                        Selected date is a holiday ({isHoliday}). No classes available.
+                      </div>
+                    ) : availableClasses.length === 0 ? (
+                      <div className="text-sm p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 rounded-lg">
+                        No classes scheduled for {targetDate.toLocaleDateString('es-ES', { weekday: 'long' })}.
+                      </div>
+                    ) : (
+                      <select
+                        value={targetSlotId}
+                        onChange={(e) => setTargetSlotId(e.target.value)}
+                        className="w-full bg-[#0a0a0e] border border-white/10 rounded-lg p-3 text-sm text-slate-200 focus:border-blue-500 focus:outline-none transition-colors"
+                      >
+                        <option value="" disabled>Select a subject...</option>
+                        {availableClasses.map(slot => (
+                          <option key={slot.id} value={slot.id}>
+                            {slot.time} - {slot.subject}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-3 pt-4 border-t border-white/5">
                 <button
-                  onClick={() => { setIsDatePickerModalOpen(false); setSelectedSlotForAction(null); }}
+                  onClick={() => { setIsDatePickerModalOpen(false); setSelectedSlotForAction(null); setTargetSlotId(''); }}
                   className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm font-bold hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => {
-                    if (format(targetDate, 'yyyy-MM-dd') === dateKey) {
-                      alert('Please choose a different date.');
+                    if (!targetSlotId) {
+                      alert('Please select a target subject.');
                       return;
                     }
                     if (datePickerMode === 'reschedule') {
-                      if (!confirm(`Are you sure you want to MOVE all lesson data to ${targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}? Data on the current date will be removed.`)) return;
-                      handleRescheduleToDate(targetDate);
+                      if (!confirm(`Are you sure you want to MOVE this class data to ${targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}?`)) return;
+                      handleRescheduleToDate(targetDate, targetSlotId);
                     } else {
-                      handleCopyToDate(targetDate);
+                      handleCopyToDate(targetDate, targetSlotId);
                     }
                   }}
-                  disabled={isCopying || format(targetDate, 'yyyy-MM-dd') === dateKey}
+                  disabled={isCopying || !targetSlotId}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     datePickerMode === 'copy'
                       ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30'
@@ -1254,9 +1298,9 @@ function LessonArchiveContent() {
                   {isCopying ? (
                     <><Loader2 size={14} className="animate-spin" /> Processing...</>
                   ) : datePickerMode === 'copy' ? (
-                    <><Copy size={14} /> Copy</>
+                    <><Copy size={14} /> Copy Data</>
                   ) : (
-                    <><MoveRight size={14} /> Move</>
+                    <><MoveRight size={14} /> Move Data</>
                   )}
                 </button>
               </div>
