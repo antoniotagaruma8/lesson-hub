@@ -671,7 +671,7 @@ function LessonArchiveContent() {
   };
 
   // Upload Image
-  const handleUpload = async (slotId: string, file: File): Promise<string | null> => {
+  const handleUpload = async (slotId: string, file: File, notesToAppend?: string): Promise<string | null> => {
     if (!file || !user || !isOwner) return null;
     
     setIsUploadingImage(prev => ({ ...prev, [slotId]: true }));
@@ -682,8 +682,17 @@ function LessonArchiveContent() {
       if (data) {
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/lesson-gallery/${fileName}`;
         const currentImages = entries[slotId]?.images || [];
-        // Save to DB so it appears in the gallery
-        await saveData(slotId, { images: [...currentImages, publicUrl] });
+        
+        // Prepare the updates payload
+        const updates: Partial<LessonEntry> = { images: [...currentImages, publicUrl] };
+        
+        // If notes were provided (e.g., from a paste event), append the markdown image link to the notes
+        if (notesToAppend !== undefined) {
+          updates.notes = notesToAppend;
+        }
+
+        // Save to DB in a single call to prevent race conditions
+        await saveData(slotId, updates);
         setIsUploadingImage(prev => ({ ...prev, [slotId]: false }));
         return publicUrl;
       }
@@ -693,6 +702,52 @@ function LessonArchiveContent() {
     }
     setIsUploadingImage(prev => ({ ...prev, [slotId]: false }));
     return null;
+  };
+
+  // Delete Image
+  const handleDeleteImage = async (slotId: string, imageUrl: string) => {
+    if (!user || !isOwner) return;
+    
+    // Ask for confirmation
+    if (!window.confirm('Are you sure you want to permanently delete this image?')) return;
+
+    try {
+      // 1. Extract the filename from the full public URL
+      // Example URL: https://[project].supabase.co/storage/v1/object/public/lesson-gallery/1774077520001-image.png
+      // Filename: 1774077520001-image.png
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+
+      // 2. Remove from Supabase Storage Bucket
+      if (fileName) {
+        const { error: storageError } = await supabase.storage.from('lesson-gallery').remove([fileName]);
+        if (storageError) {
+          console.error("Storage deletion error:", storageError);
+          // Decided to proceed with DB deletion even if storage deletion fails (e.g., if already manually deleted), 
+          // to ensure UI stays consistent and prevents dead links.
+        }
+      }
+
+      // 3. Remove from Lesson Database payload
+      const currentImages = entries[slotId]?.images || [];
+      const updatedImages = currentImages.filter(img => img !== imageUrl);
+      
+      // Also optionally clean up from text notes if it was pasted
+      let currentNotes = entries[slotId]?.notes || '';
+      // Find and remove the exact markdown snippet if it exists: `![Pasted Image...](imageUrl)` or just `![...](imageUrl)`
+      // A simple replace might be tricky with regex, let's just do a basic string replace for the URL itself inside markdown format
+      // Actually, removing it from notes automatically could be complex due to varying markdown tags. 
+      // We'll leave the markdown string in the notes (it will just be a broken image link that needs manual deletion by the user later), 
+      // or try to do a basic regex replace.
+      const markdownRegex = new RegExp(`!\\[.*?\\]\\(${imageUrl}\\)\\n?`, 'g');
+      currentNotes = currentNotes.replace(markdownRegex, '');
+      
+      await saveData(slotId, { images: updatedImages, notes: currentNotes });
+      
+    } catch (err) {
+      console.error('Error deleting image:', err);
+      alert('Failed to delete image.');
+    }
   };
 
   // Helper to handle multiple links (JSON or single string)
@@ -1684,9 +1739,22 @@ function LessonArchiveContent() {
                                     {/* Thumbnails */}
                                     <div className="flex gap-3 overflow-x-auto pb-2 h-24 items-center">
                                       {data.images?.map((img: string, i: number) => (
-                                        <a key={i} href={img} target="_blank" className="w-20 h-20 rounded-xl border border-white/10 overflow-hidden hover:opacity-80 transition-opacity shrink-0 shadow-md">
-                                          <img src={img} className="w-full h-full object-cover" />
-                                        </a>
+                                        <div key={i} className="relative group w-20 h-20 shrink-0">
+                                          <a href={img} target="_blank" className="block w-full h-full rounded-xl border border-white/10 overflow-hidden hover:opacity-80 transition-opacity shadow-md">
+                                            <img src={img} className="w-full h-full object-cover" />
+                                          </a>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              handleDeleteImage(slot.id, img);
+                                            }}
+                                            title="Delete image"
+                                            className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm backdrop-blur-sm"
+                                          >
+                                            <X size={12} strokeWidth={3} />
+                                          </button>
+                                        </div>
                                       ))}
                                     </div>
                                   </div>
