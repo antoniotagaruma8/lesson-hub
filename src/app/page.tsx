@@ -1224,17 +1224,18 @@ function LessonArchiveContent() {
               </div>
               
               {targetDate && (() => {
-                // Determine target date's schedule profile
                 const tDateKey = format(targetDate, 'yyyy-MM-dd');
-                const tDayIndex = (targetDate.getDay() + 6) % 7;
-                const specificProfile = profiles.find((p: ScheduleProfile) => p.specific_date === tDateKey);
+                const tDayIndex = targetDate.getDay(); // 0 (Sun) - 6 (Sat)
                 const isHoliday = HOLIDAYS[tDateKey];
                 
                 let targetSchedule: ScheduleSlot[] = [];
                 if (!isHoliday) {
-                  const defaultProfile = profiles.find((p: ScheduleProfile) => !p.specific_date && p.day_index === tDayIndex);
-                  targetSchedule = specificProfile ? specificProfile.slots : (defaultProfile ? defaultProfile.slots : MAIN_SCHEDULE.days[tDayIndex]);
+                  // If profiles exist in state and the current profile has a matching day, use it.
+                  // Otherwise fallback to MAIN_SCHEDULE
+                  const activeProfile = profiles.find((p: any) => p.is_active) || profiles[0] || SCHEDULE_PROFILES[0];
+                  targetSchedule = activeProfile.schedule[tDayIndex] || MAIN_SCHEDULE[tDayIndex] || [];
                 }
+                
                 const availableClasses = targetSchedule.filter(s => !s.isBreak);
 
                 return (
