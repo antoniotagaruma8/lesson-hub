@@ -1297,6 +1297,25 @@ function LessonArchiveContent() {
         <div className={`bg-[#0a0a0e]/80 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out flex flex-col overflow-hidden tour-step-schedule ${isPanelOpen ? 'min-h-[60vh] md:min-h-0 flex-1 opacity-100 md:w-2/3' : 'h-0 md:w-0 opacity-0 overflow-hidden'}`}>
           <div className="w-full h-full flex flex-col md:min-w-[320px] relative">
 
+            {/* Sticky Action Bar for Copy/Reschedule */}
+            {isAdmin && schedule.length > 0 && (
+              <div className="shrink-0 px-6 py-3 border-b border-white/10 bg-[#0a0a0e]/90 backdrop-blur-md z-20 flex items-center gap-2">
+                <button
+                  onClick={() => { setDatePickerMode('copy'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                >
+                  <Copy size={14} />
+                  Copy to Date
+                </button>
+                <button
+                  onClick={() => { setDatePickerMode('reschedule'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-2 rounded-lg transition-all border border-violet-500/20 hover:border-violet-500/40"
+                >
+                  <MoveRight size={14} />
+                  Reschedule
+                </button>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-6 pt-6 z-10 relative">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -1317,25 +1336,6 @@ function LessonArchiveContent() {
                   </div>
                   {loading && <Loader2 className="animate-spin text-blue-500" />}
                 </div>
-                {/* Reschedule & Copy Buttons */}
-                {isAdmin && schedule.length > 0 && (
-                  <div className="flex items-center gap-2 mt-4">
-                    <button
-                      onClick={() => { setDatePickerMode('copy'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
-                      className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                    >
-                      <Copy size={14} />
-                      Copy to Date
-                    </button>
-                    <button
-                      onClick={() => { setDatePickerMode('reschedule'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
-                      className="flex items-center gap-1.5 text-xs font-bold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-2 rounded-lg transition-all border border-violet-500/20 hover:border-violet-500/40"
-                    >
-                      <MoveRight size={14} />
-                      Reschedule
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-4 relative z-10">
