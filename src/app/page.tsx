@@ -168,6 +168,7 @@ function LessonArchiveContent() {
   const [targetSlotId, setTargetSlotId] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
   const [selectedSlotForAction, setSelectedSlotForAction] = useState<{ id: string, subject: string } | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState<Record<string, boolean>>({});
 
   // We define all steps here
   const [tourSteps, setTourSteps] = useState<Step[]>([
@@ -670,15 +671,28 @@ function LessonArchiveContent() {
   };
 
   // Upload Image
-  const handleUpload = async (slotId: string, file: File) => {
-    if (!file || !user || !isOwner) return;
+  const handleUpload = async (slotId: string, file: File): Promise<string | null> => {
+    if (!file || !user || !isOwner) return null;
+    
+    setIsUploadingImage(prev => ({ ...prev, [slotId]: true }));
     const fileName = `${Date.now()}-${file.name}`;
-    const { data } = await supabase.storage.from('lesson-gallery').upload(fileName, file);
-    if (data) {
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/lesson-gallery/${fileName}`;
-      const currentImages = entries[slotId]?.images || [];
-      saveData(slotId, { images: [...currentImages, publicUrl] });
+    try {
+      const { data, error } = await supabase.storage.from('lesson-gallery').upload(fileName, file);
+      if (error) throw error;
+      if (data) {
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/lesson-gallery/${fileName}`;
+        const currentImages = entries[slotId]?.images || [];
+        // Save to DB so it appears in the gallery
+        await saveData(slotId, { images: [...currentImages, publicUrl] });
+        setIsUploadingImage(prev => ({ ...prev, [slotId]: false }));
+        return publicUrl;
+      }
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      alert('Failed to upload image.');
     }
+    setIsUploadingImage(prev => ({ ...prev, [slotId]: false }));
+    return null;
   };
 
   // Helper to handle multiple links (JSON or single string)
@@ -1622,12 +1636,37 @@ function LessonArchiveContent() {
 
                                 {/* Notes */}
                                 <div className="relative">
-                                  <span className="absolute -top-2.5 left-3 bg-[#13131a] px-2 text-[10px] text-yellow-500 font-bold uppercase border border-white/10 rounded-full shadow-sm">Private Notes</span>
+                                  <span className="absolute -top-2.5 left-3 bg-[#13131a] px-2 text-[10px] text-yellow-500 font-bold uppercase border border-white/10 rounded-full shadow-sm flex items-center gap-1">
+                                    Private Notes
+                                    {isUploadingImage[slot.id] && <Loader2 size={10} className="animate-spin text-yellow-500" />}
+                                  </span>
                                   <textarea
-                                    className="w-full bg-[#0a0a0e]/60 border border-white/10 rounded-xl p-4 pt-5 text-sm h-28 resize-none focus:border-yellow-500/50 focus:bg-white/5 outline-none transition-all text-slate-300 placeholder-slate-600"
-                                    placeholder="Jot down ideas, exam pointers, or reminders..."
+                                    className={`w-full bg-[#0a0a0e]/60 border border-white/10 rounded-xl p-4 pt-5 text-sm h-28 resize-none focus:border-yellow-500/50 focus:bg-white/5 outline-none transition-all text-slate-300 placeholder-slate-600 ${isUploadingImage[slot.id] ? 'opacity-50 cursor-wait' : ''}`}
+                                    placeholder="Jot down ideas, exam pointers, or reminders... (You can paste images here!)"
                                     value={data.notes || ''}
                                     onChange={(e) => saveData(slot.id, { notes: e.target.value })}
+                                    disabled={isUploadingImage[slot.id]}
+                                    onPaste={async (e) => {
+                                      const items = e.clipboardData?.items;
+                                      if (!items) return;
+
+                                      for (let i = 0; i < items.length; i++) {
+                                        if (items[i].type.indexOf('image') === 0) {
+                                          e.preventDefault(); // Prevent default text paste
+                                          const file = items[i].getAsFile();
+                                          if (file) {
+                                            const publicUrl = await handleUpload(slot.id, file);
+                                            if (publicUrl) {
+                                              const currentNotes = data.notes || '';
+                                              const separator = currentNotes.length > 0 && !currentNotes.endsWith('\n') ? '\n' : '';
+                                              const imageMarkdown = `${separator}![Pasted Image ${new Date().toLocaleTimeString('es-ES')}](${publicUrl})\n`;
+                                              saveData(slot.id, { notes: currentNotes + imageMarkdown });
+                                            }
+                                          }
+                                          break; // Only handle the first image if multiple are pasted
+                                        }
+                                      }
+                                    }}
                                   />
                                 </div>
 
