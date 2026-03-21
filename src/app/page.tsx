@@ -1230,10 +1230,15 @@ function LessonArchiveContent() {
                 
                 let targetSchedule: ScheduleSlot[] = [];
                 if (!isHoliday) {
-                  // If profiles exist in state and the current profile has a matching day, use it.
-                  // Otherwise fallback to MAIN_SCHEDULE
-                  const activeProfile = profiles.find((p: any) => p.is_active) || profiles[0] || SCHEDULE_PROFILES[0];
-                  targetSchedule = activeProfile.schedule[tDayIndex] || MAIN_SCHEDULE[tDayIndex] || [];
+                  // Use the currently selected profile based on currentProfileId
+                  const activeProfile = profiles.find((p: any) => p.id === currentProfileId) || profiles[0] || SCHEDULE_PROFILES[0];
+                  
+                  // Ensure activeProfile.schedule is valid and has an array for the target day, otherwise fallback to MAIN_SCHEDULE
+                  if (activeProfile && activeProfile.schedule && Array.isArray(activeProfile.schedule[tDayIndex])) {
+                    targetSchedule = activeProfile.schedule[tDayIndex];
+                  } else if (Array.isArray(MAIN_SCHEDULE[tDayIndex])) {
+                    targetSchedule = MAIN_SCHEDULE[tDayIndex];
+                  }
                 }
                 
                 const availableClasses = targetSchedule.filter(s => !s.isBreak);
