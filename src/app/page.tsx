@@ -162,11 +162,11 @@ function LessonArchiveContent() {
   // Tour State
   const [runTour, setRunTour] = useState(false);
 
-  // Reschedule / Copy state
   const [isDatePickerModalOpen, setIsDatePickerModalOpen] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<'copy' | 'reschedule'>('copy');
   const [targetDate, setTargetDate] = useState<Date>(new Date());
   const [isCopying, setIsCopying] = useState(false);
+  const [selectedSlotForAction, setSelectedSlotForAction] = useState<{ id: string, subject: string } | null>(null);
 
   // We define all steps here
   const [tourSteps, setTourSteps] = useState<Step[]>([
@@ -573,83 +573,94 @@ function LessonArchiveContent() {
 
   // Copy all lesson entries from current date to a target date
   const handleCopyToDate = async (target: Date) => {
-    if (!user || !isOwner) return;
+    if (!user || !isOwner || !selectedSlotForAction) return;
     setIsCopying(true);
     const targetKey = format(target, 'yyyy-MM-dd');
     try {
-      // Fetch all entries for current date
+      // Fetch entry for current date and specific slot
       const { data: sourceEntries, error: fetchError } = await supabase
         .from('lesson_plan')
         .select('*')
         .eq('date', dateKey)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('slot_id', selectedSlotForAction.id);
       if (fetchError) throw fetchError;
       if (!sourceEntries || sourceEntries.length === 0) {
-        alert('No lesson data to copy from this date.');
+        alert('No saved lesson data to copy for this class.');
         setIsCopying(false);
         return;
       }
-      // Upsert each entry with the new target date
-      for (const entry of sourceEntries) {
-        const { id, ...rest } = entry;
-        const { error: upsertError } = await supabase.from('lesson_plan').upsert({
-          ...rest,
-          date: targetKey,
-        }, { onConflict: 'user_id, date, slot_id' });
-        if (upsertError) throw upsertError;
-      }
-      alert(`Lesson data copied to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+      
+      const entry = sourceEntries[0];
+      const { id, ...rest } = entry;
+      const { error: upsertError } = await supabase.from('lesson_plan').upsert({
+        ...rest,
+        date: targetKey,
+      }, { onConflict: 'user_id, date, slot_id' });
+      if (upsertError) throw upsertError;
+
+      alert(`Lesson data for ${selectedSlotForAction.subject} copied to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
     } catch (err) {
       console.error('Error copying lessons:', err);
       alert('Failed to copy lesson data.');
     }
     setIsCopying(false);
     setIsDatePickerModalOpen(false);
+    setSelectedSlotForAction(null);
   };
 
   // Reschedule: copy to target date, then delete from current date
   const handleRescheduleToDate = async (target: Date) => {
-    if (!user || !isOwner) return;
+    if (!user || !isOwner || !selectedSlotForAction) return;
     setIsCopying(true);
     const targetKey = format(target, 'yyyy-MM-dd');
     try {
-      // Fetch all entries for current date
+      // Fetch entry for current date and specific slot
       const { data: sourceEntries, error: fetchError } = await supabase
         .from('lesson_plan')
         .select('*')
         .eq('date', dateKey)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('slot_id', selectedSlotForAction.id);
       if (fetchError) throw fetchError;
       if (!sourceEntries || sourceEntries.length === 0) {
-        alert('No lesson data to reschedule from this date.');
+        alert('No saved lesson data to reschedule for this class.');
         setIsCopying(false);
         return;
       }
-      // Copy entries to new date
-      for (const entry of sourceEntries) {
-        const { id, ...rest } = entry;
-        const { error: upsertError } = await supabase.from('lesson_plan').upsert({
-          ...rest,
-          date: targetKey,
-        }, { onConflict: 'user_id, date, slot_id' });
-        if (upsertError) throw upsertError;
-      }
-      // Delete entries from current date
+
+      const entry = sourceEntries[0];
+      const { id, ...rest } = entry;
+      const { error: upsertError } = await supabase.from('lesson_plan').upsert({
+        ...rest,
+        date: targetKey,
+      }, { onConflict: 'user_id, date, slot_id' });
+      if (upsertError) throw upsertError;
+
+      // Delete entry from current date
       const { error: deleteError } = await supabase
         .from('lesson_plan')
         .delete()
         .eq('date', dateKey)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('slot_id', selectedSlotForAction.id);
       if (deleteError) throw deleteError;
-      // Clear local entries
-      setEntries({});
-      alert(`Lesson data moved to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
+      
+      // Clear from local state
+      setEntries(prev => {
+        const newEntries = { ...prev };
+        delete newEntries[selectedSlotForAction.id];
+        return newEntries;
+      });
+
+      alert(`Lesson data for ${selectedSlotForAction.subject} moved to ${target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}!`);
     } catch (err) {
       console.error('Error rescheduling lessons:', err);
       alert('Failed to reschedule lesson data.');
     }
     setIsCopying(false);
     setIsDatePickerModalOpen(false);
+    setSelectedSlotForAction(null);
   };
 
   // Upload Image
@@ -1183,15 +1194,15 @@ function LessonArchiveContent() {
                   <><MoveRight size={16} className="text-violet-400" /> Reschedule Lessons</>
                 )}
               </h3>
-              <button onClick={() => setIsDatePickerModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => { setIsDatePickerModalOpen(false); setSelectedSlotForAction(null); }} className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
                 <X size={18} />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="text-xs text-slate-400 mb-2">
                 {datePickerMode === 'copy'
-                  ? <>Copying lesson data from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span> to:</>
-                  : <>Moving lesson data from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span> to:</>
+                  ? <>Copying lesson data for <span className="text-blue-300 font-bold">{selectedSlotForAction?.subject}</span> from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span> to:</>
+                  : <>Moving lesson data for <span className="text-violet-300 font-bold">{selectedSlotForAction?.subject}</span> from <span className="text-white font-bold">{date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span> to:</>
                 }
               </div>
               <div className="bg-[#0a0a0e] border border-white/10 rounded-xl p-3 date-picker-modal-cal">
@@ -1215,7 +1226,7 @@ function LessonArchiveContent() {
               )}
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setIsDatePickerModalOpen(false)}
+                  onClick={() => { setIsDatePickerModalOpen(false); setSelectedSlotForAction(null); }}
                   className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm font-bold hover:bg-white/10 transition-colors"
                 >
                   Cancel
@@ -1296,26 +1307,6 @@ function LessonArchiveContent() {
         {/* 3. CLASSES PANEL (Right) */}
         <div className={`bg-[#0a0a0e]/80 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out flex flex-col overflow-hidden tour-step-schedule ${isPanelOpen ? 'min-h-[60vh] md:min-h-0 flex-1 opacity-100 md:w-2/3' : 'h-0 md:w-0 opacity-0 overflow-hidden'}`}>
           <div className="w-full h-full flex flex-col md:min-w-[320px] relative">
-
-            {/* Sticky Action Bar for Copy/Reschedule */}
-            {isAdmin && schedule.length > 0 && (
-              <div className="shrink-0 px-6 py-3 border-b border-white/10 bg-[#0a0a0e]/90 backdrop-blur-md z-20 flex items-center gap-2">
-                <button
-                  onClick={() => { setDatePickerMode('copy'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
-                  className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                >
-                  <Copy size={14} />
-                  Copy to Date
-                </button>
-                <button
-                  onClick={() => { setDatePickerMode('reschedule'); setTargetDate(new Date()); setIsDatePickerModalOpen(true); }}
-                  className="flex items-center gap-1.5 text-xs font-bold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-2 rounded-lg transition-all border border-violet-500/20 hover:border-violet-500/40"
-                >
-                  <MoveRight size={14} />
-                  Reschedule
-                </button>
-              </div>
-            )}
 
             <div className="flex-1 overflow-y-auto p-6 pt-6 z-10 relative">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -1437,12 +1428,42 @@ function LessonArchiveContent() {
                       {isOpen && (
                         <div className="px-5 pb-5 pt-0 border-t border-white/10 bg-[#0a0a0e]/40">
 
-                          {/* Edit Info Button (Visible inside expanded) */}
+                          {/* Edit Info Button & Copy/Reschedule Actions (Visible inside expanded) */}
                           {isAdmin && (
-                            <div className="mt-4 flex justify-end">
+                            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                              {/* Show Copy/Reschedule buttons only if there's actual data saved for this specific class */}
+                              {(data.link || data.notes || (data.images && data.images.length > 0)) && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setDatePickerMode('copy');
+                                      setTargetDate(new Date());
+                                      setSelectedSlotForAction({ id: slot.id, subject: slot.subject || 'Class' });
+                                      setIsDatePickerModalOpen(true);
+                                    }}
+                                    className="text-xs flex items-center gap-1.5 font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/40 px-3 py-1.5 rounded-lg transition-colors"
+                                  >
+                                    <Copy size={12} />
+                                    Copy Data
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setDatePickerMode('reschedule');
+                                      setTargetDate(new Date());
+                                      setSelectedSlotForAction({ id: slot.id, subject: slot.subject || 'Class' });
+                                      setIsDatePickerModalOpen(true);
+                                    }}
+                                    className="text-xs flex items-center gap-1.5 font-bold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 px-3 py-1.5 rounded-lg transition-colors"
+                                  >
+                                    <MoveRight size={12} />
+                                    Reschedule Data
+                                  </button>
+                                </>
+                              )}
+                              
                               <button
                                 onClick={() => setEditingSlot({ dayIndex, slotIndex: idx, slot })}
-                                className="text-xs flex items-center gap-1.5 text-slate-400 font-bold hover:text-blue-400 hover:bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors border border-white/10 bg-white/5"
+                                className="text-xs flex items-center gap-1.5 text-slate-400 font-bold hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors border border-white/10 bg-white/5"
                               >
                                 <Pencil size={12} />
                                 Edit Time/Subject
